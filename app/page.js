@@ -233,80 +233,73 @@ export default function Home() {
     return body
   }
 
-  const openOutlookEmail = (nombreSupervisor, datos) => {
-    const subject = `Reporte de Mantenimiento - ${nombreSupervisor} - ${new Date().toLocaleDateString('es-ES')}`
+
+
+const openOutlookEmail = (nombreSupervisor, datos) => {
+  const subject = `Reporte de Mantenimiento - ${nombreSupervisor} - ${new Date().toLocaleDateString('es-ES')}`
+  
+  // Identificar técnicos que NO reportaron
+  const tecnicosQueNoReportaron = []
+  const emailsTecnicos = datos.supervisor.emailsTecnicos || {}
+  
+  if (datos.supervisor.mecanicos) {
+    // Obtener lista de técnicos que SÍ reportaron
+    const tecnicosQueReportaron = [...new Set(datos.reportes.map(r => r.tecnico))]
     
-    // Identificar técnicos que NO reportaron
-    const tecnicosQueNoReportaron = []
-    const emailsTecnicos = datos.supervisor.emailsTecnicos || {}
-    
-    if (datos.supervisor.mecanicos) {
-      // Obtener lista de técnicos que SÍ reportaron
-      const tecnicosQueReportaron = [...new Set(datos.reportes.map(r => r.tecnico))]
-      
-      // Encontrar los que NO reportaron
-      datos.supervisor.mecanicos.forEach(tecnico => {
-        if (!tecnicosQueReportaron.includes(tecnico)) {
-          const emailTecnico = emailsTecnicos[tecnico]
-          if (emailTecnico) {
-            tecnicosQueNoReportaron.push(emailTecnico)
-          }
+    // Encontrar los que NO reportaron
+    datos.supervisor.mecanicos.forEach(tecnico => {
+      if (!tecnicosQueReportaron.includes(tecnico)) {
+        const emailTecnico = emailsTecnicos[tecnico]
+        if (emailTecnico) {
+          tecnicosQueNoReportaron.push(emailTecnico)
         }
-      })
-    }
-    
-    // Contenido completo para el correo
-    const body = generateEmailBody(datos.supervisor, datos.reportes)
-    
-    try {
-      // Construir el enlace mailto con CC
-      let mailtoLink = `mailto:${datos.supervisor.email}?subject=${encodeURIComponent(subject)}`
-      
-      // Agregar CC si hay técnicos que no reportaron
-      if (tecnicosQueNoReportaron.length > 0) {
-        const ccEmails = tecnicosQueNoReportaron.join(',')
-        mailtoLink += `&cc=${encodeURIComponent(ccEmails)}`
       }
-      
-      // Agregar el cuerpo del mensaje (limitado por longitud de URL)
-      const bodyEncoded = encodeURIComponent(body)
-      // Limitar la longitud para evitar problemas con URLs muy largas
-      if (bodyEncoded.length > 2000) {
-        // Si el cuerpo es muy largo, usar un resumen más corto
-        const shortBody = `REPORTE DE MANTENIMIENTO\nSupervisor: ${nombreSupervisor}\nFecha: ${new Date().toLocaleDateString('es-ES')}\n\nTotal de reportes: ${datos.reportes.length}\nVer detalles completos en el sistema.\n\n(Contenido completo copiado al portapapeles)`
-        mailtoLink += `&body=${encodeURIComponent(shortBody)}`
-        
-        // Copiar el contenido completo al portapapeles
-        navigator.clipboard.writeText(body).then(() => {
-          setMessage('📋 Contenido completo copiado al portapapeles. Pégalo en el correo.')
-        }).catch(() => {
-          console.log('No se pudo copiar al portapapeles automáticamente')
-        })
-      } else {
-        mailtoLink += `&body=${bodyEncoded}`
-      }
-      
-      // Intentar abrir el cliente de correo
-      const link = document.createElement('a')
-      link.href = mailtoLink
-      link.click()
-      
-      // Mostrar mensaje de confirmación
-      setMessage(`📧 Abriendo cliente de correo para ${nombreSupervisor}...`)
-      
-    } catch (error) {
-      console.error('Error al abrir el cliente de correo:', error)
-      // Fallback: mostrar modal con contenido para copiar manualmente
-      setCurrentEmailContent({
-        supervisor: nombreSupervisor,
-        email: datos.supervisor.email,
-        cc: tecnicosQueNoReportaron,
-        subject: subject,
-        body: body
-      })
-      setShowEmailModal(true)
-    }
+    })
   }
+  
+  // Generar el contenido completo del correo
+  const body = generateEmailBody(datos.supervisor, datos.reportes)
+  
+  try {
+    // Construir el enlace mailto con CC
+    let mailtoLink = `mailto:${datos.supervisor.email}?subject=${encodeURIComponent(subject)}`
+    
+    // Agregar CC si hay técnicos que no reportaron
+    if (tecnicosQueNoReportaron.length > 0) {
+      const ccEmails = tecnicosQueNoReportaron.join(',')
+      mailtoLink += `&cc=${encodeURIComponent(ccEmails)}`
+    }
+    
+    // Agregar el cuerpo completo del mensaje SIN limitaciones
+    mailtoLink += `&body=${encodeURIComponent(body)}`
+    
+    // Crear elemento link temporal para abrir el cliente de correo
+    const link = document.createElement('a')
+    link.href = mailtoLink
+    link.style.display = 'none'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    
+    // Mostrar mensaje de confirmación
+    setMessage(`📧 Correo preparado para ${nombreSupervisor} con contenido completo`)
+    
+  } catch (error) {
+    console.error('Error al abrir el cliente de correo:', error)
+    // En caso de error, mostrar modal con contenido para copiar manualmente
+    setCurrentEmailContent({
+      supervisor: nombreSupervisor,
+      email: datos.supervisor.email,
+      cc: tecnicosQueNoReportaron,
+      subject: subject,
+      body: body
+    })
+    setShowEmailModal(true)
+    setError('No se pudo abrir el cliente de correo automáticamente. Se muestra el contenido para copiar manualmente.')
+  }
+}
+
+
 
   // Función mejorada: combinar supervisores con y sin reportes
   const getAllSupervisoresWithReportes = () => {

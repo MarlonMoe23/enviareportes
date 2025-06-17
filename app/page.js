@@ -86,6 +86,7 @@ export default function Home() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteCode, setDeleteCode] = useState('')
   const [deleting, setDeleting] = useState(false)
+  const [currentEmailContent, setCurrentEmailContent] = useState(null)
 
   useEffect(() => {
     fetchReportes()
@@ -254,23 +255,57 @@ export default function Home() {
       })
     }
     
-    // Contenido completo para Outlook
+    // Contenido completo para el correo
     const body = generateEmailBody(datos.supervisor, datos.reportes)
     
-    // Construir el enlace mailto con CC
-    let mailtoLink = `mailto:${datos.supervisor.email}?subject=${encodeURIComponent(subject)}`
-    
-    // Agregar CC si hay técnicos que no reportaron
-    if (tecnicosQueNoReportaron.length > 0) {
-      const ccEmails = tecnicosQueNoReportaron.join(',')
-      mailtoLink += `&cc=${encodeURIComponent(ccEmails)}`
+    try {
+      // Construir el enlace mailto con CC
+      let mailtoLink = `mailto:${datos.supervisor.email}?subject=${encodeURIComponent(subject)}`
+      
+      // Agregar CC si hay técnicos que no reportaron
+      if (tecnicosQueNoReportaron.length > 0) {
+        const ccEmails = tecnicosQueNoReportaron.join(',')
+        mailtoLink += `&cc=${encodeURIComponent(ccEmails)}`
+      }
+      
+      // Agregar el cuerpo del mensaje (limitado por longitud de URL)
+      const bodyEncoded = encodeURIComponent(body)
+      // Limitar la longitud para evitar problemas con URLs muy largas
+      if (bodyEncoded.length > 2000) {
+        // Si el cuerpo es muy largo, usar un resumen más corto
+        const shortBody = `REPORTE DE MANTENIMIENTO\nSupervisor: ${nombreSupervisor}\nFecha: ${new Date().toLocaleDateString('es-ES')}\n\nTotal de reportes: ${datos.reportes.length}\nVer detalles completos en el sistema.\n\n(Contenido completo copiado al portapapeles)`
+        mailtoLink += `&body=${encodeURIComponent(shortBody)}`
+        
+        // Copiar el contenido completo al portapapeles
+        navigator.clipboard.writeText(body).then(() => {
+          setMessage('📋 Contenido completo copiado al portapapeles. Pégalo en el correo.')
+        }).catch(() => {
+          console.log('No se pudo copiar al portapapeles automáticamente')
+        })
+      } else {
+        mailtoLink += `&body=${bodyEncoded}`
+      }
+      
+      // Intentar abrir el cliente de correo
+      const link = document.createElement('a')
+      link.href = mailtoLink
+      link.click()
+      
+      // Mostrar mensaje de confirmación
+      setMessage(`📧 Abriendo cliente de correo para ${nombreSupervisor}...`)
+      
+    } catch (error) {
+      console.error('Error al abrir el cliente de correo:', error)
+      // Fallback: mostrar modal con contenido para copiar manualmente
+      setCurrentEmailContent({
+        supervisor: nombreSupervisor,
+        email: datos.supervisor.email,
+        cc: tecnicosQueNoReportaron,
+        subject: subject,
+        body: body
+      })
+      setShowEmailModal(true)
     }
-    
-    // Agregar el cuerpo del mensaje
-    mailtoLink += `&body=${encodeURIComponent(body)}`
-    
-    // Intentar abrir el cliente de correo
-    window.location.href = mailtoLink
   }
 
   // Función mejorada: combinar supervisores con y sin reportes
@@ -330,8 +365,8 @@ export default function Home() {
               </div>
             )}
 
-            {/* Estadísticas */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            {/* Estadísticas - Solo 3 paneles */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div className="bg-blue-50 p-4 rounded-lg">
                 <h3 className="text-lg font-semibold text-blue-900">Total Reportes</h3>
                 <p className="text-3xl font-bold text-blue-600">{reportes.length}</p>
@@ -346,14 +381,6 @@ export default function Home() {
                 <h3 className="text-lg font-semibold text-yellow-900">Pendientes</h3>
                 <p className="text-3xl font-bold text-yellow-600">
                   {reportes.filter(r => !r.terminado).length}
-                </p>
-              </div>
-              
-{/* Nueva estadística: Supervisores */}
-              <div className="bg-purple-50 p-4 rounded-lg">
-                <h3 className="text-lg font-semibold text-purple-900">Supervisores</h3>
-                <p className="text-3xl font-bold text-purple-600">
-                  {Object.keys(todosSupervisoresConReportes).length}
                 </p>
               </div>
             </div>
@@ -419,11 +446,12 @@ export default function Home() {
                             })()}
                             <button
                               onClick={() => openOutlookEmail(nombreSupervisor, datos)}
-                              className={`px-4 py-2 rounded text-sm font-medium ${
+                              className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
                                 tieneReportes 
                                   ? 'bg-blue-500 hover:bg-blue-600 text-white' 
                                   : 'bg-gray-400 hover:bg-gray-500 text-white'
                               }`}
+                              title={`Enviar reporte por correo a ${datos.supervisor.email}`}
                             >
                               📬 {tieneReportes ? 'Enviar Reporte' : 'Enviar Sin Actividad'}
                             </button>
@@ -577,16 +605,19 @@ export default function Home() {
         )}
 
         {/* Modal para mostrar contenido del correo */}
-        {showEmailModal && (
+        {showEmailModal && currentEmailContent && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
             <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
               <div className="mt-3">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-lg font-medium text-gray-900">
-                    Contenido de los Correos
+                    📧 Contenido del Correo - {currentEmailContent.supervisor}
                   </h3>
                   <button
-                    onClick={() => setShowEmailModal(false)}
+                    onClick={() => {
+                      setShowEmailModal(false)
+                      setCurrentEmailContent(null)
+                    }}
                     className="text-gray-400 hover:text-gray-600"
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -595,32 +626,56 @@ export default function Home() {
                   </button>
                 </div>
                 
+                <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                  <div className="text-sm">
+                    <p><strong>Para:</strong> {currentEmailContent.email}</p>
+                    {currentEmailContent.cc.length > 0 && (
+                      <p><strong>CC:</strong> {currentEmailContent.cc.join(', ')}</p>
+                    )}
+                    <p><strong>Asunto:</strong> {currentEmailContent.subject}</p>
+                  </div>
+                </div>
+                
                 <div className="mb-4">
+                  <div className="flex gap-2 mb-3">
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(currentEmailContent.body)
+                        setMessage('✅ Contenido copiado al portapapeles')
+                      }}
+                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm"
+                    >
+                      📋 Copiar Contenido
+                    </button>
+                    <button
+                      onClick={() => {
+                        const emailData = `Para: ${currentEmailContent.email}\n${currentEmailContent.cc.length > 0 ? `CC: ${currentEmailContent.cc.join(', ')}\n` : ''}Asunto: ${currentEmailContent.subject}\n\n${currentEmailContent.body}`
+                        navigator.clipboard.writeText(emailData)
+                        setMessage('✅ Email completo copiado (incluye destinatarios y asunto)')
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm"
+                    >
+                      📧 Copiar Email Completo
+                    </button>
+                  </div>
                   <p className="text-sm text-gray-600 mb-2">
-                    Copia el siguiente contenido y pégalo en Outlook:
+                    Copia el contenido y pégalo en tu cliente de correo:
                   </p>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText('')
-                      setMessage('✅ Contenido copiado al portapapeles')
-                      setShowEmailModal(false)
-                    }}
-                    className="mb-3 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
-                  >
-                    📋 Copiar Todo
-                  </button>
                 </div>
 
                 <textarea
-                  value=""
+                  value={currentEmailContent.body}
                   readOnly
-                  className="w-full h-96 p-3 border border-gray-300 rounded-lg font-mono text-sm"
+                  className="w-full h-96 p-3 border border-gray-300 rounded-lg font-mono text-sm bg-gray-50"
                   style={{ resize: 'none' }}
                 />
                 
                 <div className="mt-4 flex justify-end">
                   <button
-                    onClick={() => setShowEmailModal(false)}
+                    onClick={() => {
+                      setShowEmailModal(false)
+                      setCurrentEmailContent(null)
+                    }}
                     className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
                   >
                     Cerrar

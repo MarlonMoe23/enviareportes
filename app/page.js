@@ -82,7 +82,6 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
-  const [emailContent, setEmailContent] = useState('')
   const [showEmailModal, setShowEmailModal] = useState(false)
 
   useEffect(() => {
@@ -100,29 +99,11 @@ export default function Home() {
       } else {
         setError(data.error || 'Error al cargar reportes')
       }
-    } catch (err) {
+    } catch (error) {
       setError('Error al conectar con el servidor')
+      console.error('Error fetching reportes:', error)
     } finally {
       setLoading(false)
-    }
-  }
-
-  // Nueva función: obtener todos los supervisores
-  const fetchSupervisores = async () => {
-    try {
-      const response = await fetch('/api/supervisores')
-      const data = await response.json()
-      
-      if (response.ok) {
-        setSupervisores(data.supervisores)
-      } else {
-        console.warn('No se pudieron cargar los supervisores:', data.error)
-        // Si no hay endpoint de supervisores, usar los del grouping como fallback
-        setSupervisores([])
-      }
-    } catch (err) {
-      console.warn('Error al cargar supervisores, usando fallback')
-      setSupervisores([])
     }
   }
 
@@ -136,7 +117,6 @@ export default function Home() {
   }
 
   const generateEmailBody = (supervisor, reportes) => {
-    const totalHoras = reportes.reduce((sum, reporte) => sum + (reporte.tiempo || 0), 0)
     const reportesTerminados = reportes.filter(r => r.terminado).length
     const reportesPendientes = reportes.length - reportesTerminados
 
@@ -282,8 +262,9 @@ export default function Home() {
       } else {
         setError(data.error || 'Error al eliminar reportes')
       }
-    } catch (err) {
+    } catch (error) {
       setError('Error al eliminar reportes')
+      console.error('Error deleting reportes:', error)
     } finally {
       setLoading(false)
     }
@@ -300,7 +281,8 @@ export default function Home() {
         supervisor: {
           nombre: nombre,
           email: data.email,
-          mecanicos: data.mecanicos
+          mecanicos: data.mecanicos,
+          emailsTecnicos: data.emailsTecnicos
         },
         reportes: []
       }
@@ -490,7 +472,7 @@ export default function Home() {
                               📋 No hay reportes registrados para este supervisor
                             </p>
                             <p className="text-xs mt-1">
-                              Puedes enviar un reporte indicando "sin actividad" para mantener el registro
+                              Puedes enviar un reporte indicando &quot;sin actividad&quot; para mantener el registro
                             </p>
                           </div>
                         )}
@@ -541,7 +523,7 @@ export default function Home() {
                   </p>
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(emailContent)
+                      navigator.clipboard.writeText('')
                       setMessage('✅ Contenido copiado al portapapeles')
                       setShowEmailModal(false)
                     }}
@@ -552,7 +534,7 @@ export default function Home() {
                 </div>
 
                 <textarea
-                  value={emailContent}
+                  value=""
                   readOnly
                   className="w-full h-96 p-3 border border-gray-300 rounded-lg font-mono text-sm"
                   style={{ resize: 'none' }}

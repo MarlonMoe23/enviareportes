@@ -41,7 +41,7 @@ const supervisorsData = {
       'Alex Haro': 'alex.haro@celec.gob.ec',
       'Angelo Porras': 'angelo.porras@celec.gob.ec',
       'José Urquizo': 'jose.urquizo@celec.gob.ec',
-      'Israel Pérez': 'israel.perez@celec.gob.ec',
+      'Israel Pérez': 'jefferson.perez@celec.gob.ec',
       'Kevin Vargas': 'kevin.vargas@celec.gob.ec'
     }
   }

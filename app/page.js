@@ -83,6 +83,9 @@ export default function Home() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [showEmailModal, setShowEmailModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteCode, setDeleteCode] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     fetchReportes()
@@ -104,6 +107,36 @@ export default function Home() {
       console.error('Error fetching reportes:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const deleteAllReportes = async () => {
+    if (deleteCode !== '23') {
+      setError('Código de validación incorrecto')
+      return
+    }
+
+    try {
+      setDeleting(true)
+      const response = await fetch('/api/reportes', {
+        method: 'DELETE',
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok) {
+        setReportes([])
+        setMessage('✅ Todos los registros han sido eliminados exitosamente')
+        setShowDeleteModal(false)
+        setDeleteCode('')
+      } else {
+        setError(data.error || 'Error al eliminar registros')
+      }
+    } catch (error) {
+      setError('Error al conectar con el servidor')
+      console.error('Error deleting reportes:', error)
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -459,7 +492,88 @@ export default function Home() {
               </div>
             )}
           </div>
+
+          {/* Botón de eliminar registros - Discreto al final */}
+          <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="text-xs text-gray-500 hover:text-red-600 transition-colors"
+              >
+                🗑️ Eliminar todos los registros
+              </button>
+            </div>
+          </div>
         </div>
+
+        {/* Modal para eliminar registros */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-medium text-red-600">
+                    ⚠️ Eliminar Registros
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowDeleteModal(false)
+                      setDeleteCode('')
+                      setError('')
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                  </button>
+                </div>
+                
+                <div className="mb-4">
+                  <p className="text-sm text-gray-700 mb-3">
+                    Esta acción eliminará <strong>TODOS</strong> los registros de la base de datos de forma permanente.
+                  </p>
+                  <p className="text-sm text-red-600 mb-4">
+                    ⚠️ Esta operación no se puede deshacer.
+                  </p>
+                  
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ingresa el código de validación para continuar:
+                  </label>
+                  <input
+                    type="text"
+                    value={deleteCode}
+                    onChange={(e) => setDeleteCode(e.target.value)}
+                    placeholder="Código de validación"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    maxLength="2"
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => {
+                      setShowDeleteModal(false)
+                      setDeleteCode('')
+                      setError('')
+                    }}
+                    className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-md transition-colors"
+                    disabled={deleting}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={deleteAllReportes}
+                    disabled={deleting || deleteCode !== '23'}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded-md transition-colors"
+                  >
+                    {deleting ? 'Eliminando...' : 'Eliminar Todo'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Modal para mostrar contenido del correo */}
         {showEmailModal && (

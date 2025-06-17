@@ -240,6 +240,36 @@ export default function Home() {
     window.location.href = mailtoLink
   }
 
+  const handleDeleteReportes = async () => {
+    if (!confirm('¿Estás seguro de que quieres eliminar todos los reportes? Esta acción no se puede deshacer.')) {
+      return
+    }
+
+    try {
+      setLoading(true)
+      setMessage('')
+      setError('')
+
+      const response = await fetch('/api/reportes', {
+        method: 'DELETE',
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setMessage('Todos los reportes han sido eliminados exitosamente')
+        setReportes([])
+      } else {
+        setError(data.error || 'Error al eliminar reportes')
+      }
+    } catch (error) {
+      setError('Error al eliminar reportes')
+      console.error('Error deleting reportes:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Función mejorada: combinar supervisores con y sin reportes
   const getAllSupervisoresWithReportes = () => {
     const gruposSupervisores = groupReportesBySupervisor(reportes)
@@ -324,14 +354,21 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Botón de actualizar */}
-            <div className="flex justify-center mb-6">
+            {/* Botones de acción */}
+            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+              <button
+                onClick={handleDeleteReportes}
+                disabled={loading || reportes.length === 0}
+                className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+              >
+                {loading ? 'Eliminando...' : 'Eliminar Todos los Reportes'}
+              </button>
               <button
                 onClick={() => {
                   fetchReportes()
                 }}
                 disabled={loading}
-                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-3 px-6 rounded-lg transition-colors"
               >
                 {loading ? 'Actualizando...' : 'Actualizar Datos'}
               </button>

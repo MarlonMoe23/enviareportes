@@ -330,8 +330,8 @@ export default function Home() {
               </div>
             )}
 
-            {/* Estadísticas - Solo 3 paneles */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {/* Estadísticas */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-blue-50 p-4 rounded-lg">
                 <h3 className="text-lg font-semibold text-blue-900">Total Reportes</h3>
                 <p className="text-3xl font-bold text-blue-600">{reportes.length}</p>
@@ -346,6 +346,14 @@ export default function Home() {
                 <h3 className="text-lg font-semibold text-yellow-900">Pendientes</h3>
                 <p className="text-3xl font-bold text-yellow-600">
                   {reportes.filter(r => !r.terminado).length}
+                </p>
+              </div>
+              
+{/* Nueva estadística: Supervisores */}
+              <div className="bg-purple-50 p-4 rounded-lg">
+                <h3 className="text-lg font-semibold text-purple-900">Supervisores</h3>
+                <p className="text-3xl font-bold text-purple-600">
+                  {Object.keys(todosSupervisoresConReportes).length}
                 </p>
               </div>
             </div>

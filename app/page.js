@@ -348,14 +348,7 @@ export default function Home() {
                   {reportes.filter(r => !r.terminado).length}
                 </p>
               </div>
-              {/* Nueva estadística: Supervisores */}
-              <div className="bg-purple-50 p-4 rounded-lg">
-                <h3 className="text-lg font-semibold text-purple-900">Supervisores</h3>
-                <p className="text-3xl font-bold text-purple-600">
-                  {Object.keys(todosSupervisoresConReportes).length}
-                </p>
-              </div>
-            </div>
+              
 
             {/* Botón de actualizar */}
             <div className="flex justify-center mb-6">

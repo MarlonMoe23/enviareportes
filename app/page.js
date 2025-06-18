@@ -87,8 +87,10 @@ export default function Home() {
   const [deleting, setDeleting] = useState(false)
   const [currentEmailContent, setCurrentEmailContent] = useState(null)
   const [expandedSupervisor, setExpandedSupervisor] = useState(null)
+  const [isMounted, setIsMounted] = useState(false)
 
   useEffect(() => {
+    setIsMounted(true)
     fetchReportes()
   }, [])
 
@@ -256,8 +258,10 @@ export default function Home() {
       body: body
     }
 
-    // En móviles, ir directo al modal
-    const isMobile = window.innerWidth <= 768
+    // Verificar si estamos en el cliente y si es móvil
+    if (!isMounted) return
+
+    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
 
     if (isMobile) {
       setCurrentEmailContent(emailData)
@@ -276,15 +280,17 @@ export default function Home() {
 
     const fullMailtoLink = mailtoLink + `&body=${encodeURIComponent(body)}`
 
-    if (navigator.clipboard && navigator.clipboard.writeText) {
+    if (typeof window !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(body).catch(() => {
         console.log('No se pudo copiar al portapapeles automáticamente')
       })
     }
 
     try {
-      window.location.href = fullMailtoLink
-      setMessage(`✅ Cliente de correo abierto para ${nombreSupervisor}`)
+      if (typeof window !== 'undefined') {
+        window.location.href = fullMailtoLink
+        setMessage(`✅ Cliente de correo abierto para ${nombreSupervisor}`)
+      }
     } catch (err) {
       console.error('Error opening email client:', err)
       setCurrentEmailContent(emailData)
@@ -319,6 +325,18 @@ export default function Home() {
   }
 
   const todosSupervisoresConReportes = getAllSupervisoresWithReportes()
+
+  // No renderizar hasta que el componente esté montado en el cliente
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Cargando...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -406,7 +424,7 @@ export default function Home() {
                     <div 
                       className="p-3 sm:p-4 cursor-pointer sm:cursor-default"
                       onClick={() => {
-                        if (window.innerWidth <= 768) {
+                        if (typeof window !== 'undefined' && window.innerWidth <= 768) {
                           setExpandedSupervisor(isExpanded ? null : nombreSupervisor)
                         }
                       }}
@@ -429,7 +447,7 @@ export default function Home() {
                           </div>
 
                           {/* Email - Solo visible en desktop o cuando está expandido */}
-                          <div className={`text-xs sm:text-sm text-gray-500 mt-1 ${window.innerWidth <= 768 && !isExpanded ? 'hidden' : ''}`}>
+                          <div className={`text-xs sm:text-sm text-gray-500 mt-1 ${typeof window !== 'undefined' && window.innerWidth <= 768 && !isExpanded ? 'hidden' : ''}`}>
                             {datos.supervisor.email}
                           </div>
                         </div>
@@ -456,7 +474,7 @@ export default function Home() {
                     </div>
 
                     {/* Contenido expandible - Siempre visible en desktop */}
-                    <div className={`${window.innerWidth <= 768 ? (isExpanded ? 'block' : 'hidden') : 'block'}`}>
+                    <div className={`${typeof window !== 'undefined' && window.innerWidth <= 768 ? (isExpanded ? 'block' : 'hidden') : 'block'}`}>
                       {/* Técnicos asignados */}
                       <div className="px-3 sm:px-4 pb-2">
                         <div className="text-xs text-gray-500">
@@ -662,8 +680,10 @@ export default function Home() {
                     />
                     <button
                       onClick={() => {
-                        navigator.clipboard.writeText(currentEmailContent.email)
-                        setMessage('✅ Email copiado')
+                        if (typeof window !== 'undefined' && navigator.clipboard) {
+                          navigator.clipboard.writeText(currentEmailContent.email)
+                          setMessage('✅ Email copiado')
+                        }
                       }}
                       className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-xs whitespace-nowrap"
                     >
@@ -684,8 +704,10 @@ export default function Home() {
                       />
                       <button
                         onClick={() => {
-                          navigator.clipboard.writeText(currentEmailContent.cc.join(', '))
-                          setMessage('✅ CC copiado')
+                          if (typeof window !== 'undefined' && navigator.clipboard) {
+                            navigator.clipboard.writeText(currentEmailContent.cc.join(', '))
+                            setMessage('✅ CC copiado')
+                          }
                         }}
                         className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-xs whitespace-nowrap"
                       >
@@ -706,8 +728,10 @@ export default function Home() {
                     />
                     <button
                       onClick={() => {
-                        navigator.clipboard.writeText(currentEmailContent.subject)
-                        setMessage('✅ Asunto copiado')
+                        if (typeof window !== 'undefined' && navigator.clipboard) {
+                          navigator.clipboard.writeText(currentEmailContent.subject)
+                          setMessage('✅ Asunto copiado')
+                        }
                       }}
                       className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-xs whitespace-nowrap"
                     >
@@ -723,8 +747,10 @@ export default function Home() {
                   <label className="block text-sm font-semibold text-gray-700">Contenido:</label>
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(currentEmailContent.body)
-                      setMessage('✅ Contenido copiado')
+                      if (typeof window !== 'undefined' && navigator.clipboard) {
+                        navigator.clipboard.writeText(currentEmailContent.body)
+                        setMessage('✅ Contenido copiado')
+                      }
                     }}
                     className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-xs"
                   >
@@ -743,9 +769,11 @@ export default function Home() {
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={() => {
-                    const fullEmailText = `Para: ${currentEmailContent.email}\n${currentEmailContent.cc.length > 0 ? `CC: ${currentEmailContent.cc.join(', ')}\n` : ''}Asunto: ${currentEmailContent.subject}\n\n${currentEmailContent.body}`
-                    navigator.clipboard.writeText(fullEmailText)
-                    setMessage('✅ Email completo copiado')
+                    if (typeof window !== 'undefined' && navigator.clipboard) {
+                      const fullEmailText = `Para: ${currentEmailContent.email}\n${currentEmailContent.cc.length > 0 ? `CC: ${currentEmailContent.cc.join(', ')}\n` : ''}Asunto: ${currentEmailContent.subject}\n\n${currentEmailContent.body}`
+                      navigator.clipboard.writeText(fullEmailText)
+                      setMessage('✅ Email completo copiado')
+                    }
                   }}
                   className="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-medium text-center"
                 >

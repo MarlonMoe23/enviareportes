@@ -489,7 +489,7 @@ export default function Home() {
                               
                               return tecnicosSinReportar.length > 0 && (
                                 <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
-                                  📧 {tecnicosSinReportar.length} no reportan
+                                  📧 {tecnicosSinReportar.length} técnicos no reportan
                                 </span>
                               )
                             })()}
@@ -516,7 +516,7 @@ export default function Home() {
                           )}
                           {/* Mostrar mecánicos asignados */}
                           <div className="text-xs text-gray-500 mt-1">
-                            Mecánicos: {datos.supervisor.mecanicos?.join(', ') || 'No asignados'}
+                            Técnicos: {datos.supervisor.mecanicos?.join(', ') || 'No asignados'}
                           </div>
                         </div>
 

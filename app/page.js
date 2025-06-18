@@ -46,7 +46,7 @@ const supervisorsData = {
   }
 }
 
-// Funciones integradas del archivo supervisors.js
+// Funciones integradas del archivo supervisors.js pero esta eliminado?
 function getSupervisorByMecanico(nombreMecanico) {
   for (const [supervisor, data] of Object.entries(supervisorsData)) {
     if (data.mecanicos.includes(nombreMecanico)) {

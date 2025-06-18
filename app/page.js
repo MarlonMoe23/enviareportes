@@ -76,6 +76,22 @@ function groupReportesBySupervisor(reportes) {
   return grupos
 }
 
+// Función para obtener la fecha del día anterior
+function getYesterdayDate() {
+  const yesterday = new Date()
+  yesterday.setDate(yesterday.getDate() - 1)
+  return yesterday
+}
+
+// Función para formatear fecha en español
+function formatDateSpanish(date) {
+  return date.toLocaleDateString('es-ES', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
+}
+
 export default function Home() {
   const [reportes, setReportes] = useState([])
   const [loading, setLoading] = useState(false)
@@ -172,9 +188,14 @@ export default function Home() {
       }
     })
 
+    // Usar fecha del día anterior para el reporte
+    const fechaReporte = getYesterdayDate()
+    const fechaReporteFormateada = formatDateSpanish(fechaReporte)
+
     let body = `REPORTE DE MANTENIMIENTO\n`
     body += `Supervisor: ${supervisor.nombre}\n`
-    body += `Fecha: ${new Date().toLocaleDateString('es-ES')}\n\n`
+    body += `Fecha del reporte: ${fechaReporteFormateada}\n`
+    body += `Enviado: ${formatDateSpanish(new Date())}\n\n`
 
     body += `RESUMEN:\n`
     body += `- Total de reportes: ${reportes.length}\n`
@@ -202,7 +223,7 @@ export default function Home() {
     if (reportes.length === 0) {
       body += `SIN ACTIVIDAD REPORTADA EN ESTE PERÍODO\n\n`
       body += `No se registraron trabajos de mantenimiento para los técnicos\n`
-      body += `asignados a este supervisor durante el período reportado.\n\n`
+      body += `asignados a este supervisor durante el día ${fechaReporteFormateada}.\n\n`
 
       if (supervisor.mecanicos && supervisor.mecanicos.length > 0) {
         body += `TÉCNICOS ASIGNADOS QUE NO REPORTARON:\n`
@@ -230,7 +251,11 @@ export default function Home() {
   const openOutlookEmail = async (nombreSupervisor, datos) => {
     if (!isMounted) return
 
-    const subject = `Reporte de Mantenimiento - ${nombreSupervisor} - ${new Date().toLocaleDateString('es-ES')}`
+    // Usar fecha del día anterior para el asunto
+    const fechaReporte = getYesterdayDate()
+    const fechaReporteFormateada = fechaReporte.toLocaleDateString('es-ES')
+
+    const subject = `Reporte de Mantenimiento - ${nombreSupervisor} - ${fechaReporteFormateada}`
 
     const tecnicosQueNoReportaron = []
     const emailsTecnicos = datos.supervisor.emailsTecnicos || {}

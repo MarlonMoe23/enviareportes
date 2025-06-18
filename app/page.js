@@ -103,9 +103,9 @@ export default function Home() {
       } else {
         setError(data.error || 'Error al cargar reportes')
       }
-    } catch (error) {
+    } catch (err) {
       setError('Error al conectar con el servidor')
-      console.error('Error fetching reportes:', error)
+      console.error('Error fetching reportes:', err)
     } finally {
       setLoading(false)
     }
@@ -133,9 +133,9 @@ export default function Home() {
       } else {
         setError(data.error || 'Error al eliminar registros')
       }
-    } catch (error) {
+    } catch (err) {
       setError('Error al conectar con el servidor')
-      console.error('Error deleting reportes:', error)
+      console.error('Error deleting reportes:', err)
     } finally {
       setDeleting(false)
     }
@@ -285,7 +285,8 @@ export default function Home() {
     try {
       window.location.href = fullMailtoLink
       setMessage(`✅ Cliente de correo abierto para ${nombreSupervisor}`)
-    } catch (error) {
+    } catch (err) {
+      console.error('Error opening email client:', err)
       setCurrentEmailContent(emailData)
       setShowEmailModal(true)
       setMessage(`📧 Preparando correo para ${nombreSupervisor}`)
@@ -641,7 +642,7 @@ export default function Home() {
               <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <h4 className="font-semibold text-blue-900 mb-2 text-sm">📋 Instrucciones:</h4>
                 <ol className="text-xs text-blue-800 space-y-1">
-                  <li><strong>1.</strong> Toca "Copiar Email Completo"</li>
+                  <li><strong>1.</strong> Toca &ldquo;Copiar Email Completo&rdquo;</li>
                   <li><strong>2.</strong> Abre tu app de correo</li>
                   <li><strong>3.</strong> Pega la información</li>
                   <li><strong>4.</strong> Envía el correo</li>

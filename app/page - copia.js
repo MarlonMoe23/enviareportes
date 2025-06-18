@@ -396,7 +396,7 @@ export default function Home() {
               Sistema de Reportes de Mantenimiento
             </h1>
             <p className="text-gray-600 mt-2">
-              Envía reportes por correo y gestiona la base de datos
+              Gestiona reportes de mantenimiento mecánico
             </p>
           </div>
 
@@ -451,7 +451,7 @@ export default function Home() {
             {Object.keys(todosSupervisoresConReportes).length > 0 && (
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold text-gray-900">
-                  Reportes por Supervisor ({Object.keys(todosSupervisoresConReportes).length} supervisores)
+                  Reportes por Supervisor
                 </h2>
                 
                 {Object.entries(todosSupervisoresConReportes)
@@ -489,7 +489,7 @@ export default function Home() {
                               
                               return tecnicosSinReportar.length > 0 && (
                                 <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
-                                  📧 +{tecnicosSinReportar.length} en copia
+                                  📧 {tecnicosSinReportar.length} técnicos no reportan
                                 </span>
                               )
                             })()}
@@ -516,7 +516,7 @@ export default function Home() {
                           )}
                           {/* Mostrar mecánicos asignados */}
                           <div className="text-xs text-gray-500 mt-1">
-                            Mecánicos: {datos.supervisor.mecanicos?.join(', ') || 'No asignados'}
+                            Técnicos: {datos.supervisor.mecanicos?.join(', ') || 'No asignados'}
                           </div>
                         </div>
 

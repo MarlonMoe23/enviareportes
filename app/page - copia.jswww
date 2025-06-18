@@ -92,25 +92,8 @@ function formatDateSpanish(date) {
   })
 }
 
-// Función para verificar si una fecha es del día anterior
-function isYesterday(dateString) {
-  const reportDate = new Date(dateString)
-  const yesterday = getYesterdayDate()
-
-  // Comparar solo año, mes y día (ignorar hora)
-  return reportDate.getFullYear() === yesterday.getFullYear() &&
-         reportDate.getMonth() === yesterday.getMonth() &&
-         reportDate.getDate() === yesterday.getDate()
-}
-
-// Función para filtrar reportes del día anterior
-function filterYesterdayReports(reportes) {
-  return reportes.filter(reporte => isYesterday(reporte.fecha_reporte))
-}
-
 export default function Home() {
   const [reportes, setReportes] = useState([])
-  const [reportesYesterday, setReportesYesterday] = useState([])
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -133,9 +116,6 @@ export default function Home() {
 
       if (response.ok) {
         setReportes(data.reportes)
-        // Filtrar solo reportes del día anterior
-        const yesterdayReports = filterYesterdayReports(data.reportes)
-        setReportesYesterday(yesterdayReports)
       } else {
         setError(data.error || 'Error al cargar reportes')
       }
@@ -163,7 +143,6 @@ export default function Home() {
 
       if (response.ok) {
         setReportes([])
-        setReportesYesterday([])
         setMessage('✅ Todos los registros han sido eliminados exitosamente')
         setShowDeleteModal(false)
         setDeleteCode('')
@@ -329,8 +308,7 @@ export default function Home() {
   }
 
   const getAllSupervisoresWithReportes = () => {
-    // Usar solo reportes del día anterior para los emails
-    const gruposSupervisores = groupReportesBySupervisor(reportesYesterday)
+    const gruposSupervisores = groupReportesBySupervisor(reportes)
     const todosSupervisores = {}
 
     Object.entries(supervisorsData).forEach(([nombre, data]) => {
@@ -377,7 +355,7 @@ export default function Home() {
             Sistema de Reportes
           </h1>
           <p className="text-xs sm:text-sm text-gray-600 mt-1">
-            Mantenimiento Mecánico - Reportes del {formatDateSpanish(getYesterdayDate())}
+            Mantenimiento Mecánico
           </p>
         </div>
       </div>
@@ -396,35 +374,22 @@ export default function Home() {
           </div>
         )}
 
-        {/* Información de filtrado */}
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-center justify-between text-sm">
-            <div>
-              <span className="font-semibold text-blue-900">📅 Mostrando reportes del:</span>
-              <span className="ml-2 text-blue-700">{formatDateSpanish(getYesterdayDate())}</span>
-            </div>
-            <div className="text-xs text-blue-600">
-              Total en BD: {reportes.length} | Filtrados: {reportesYesterday.length}
-            </div>
-          </div>
-        </div>
-
         {/* Estadísticas - Stack en móvil, grid en desktop */}
         <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
           <div className="bg-blue-50 p-3 sm:p-4 rounded-lg text-center">
-            <h3 className="text-xs sm:text-sm font-semibold text-blue-900 mb-1">Total Ayer</h3>
-            <p className="text-xl sm:text-3xl font-bold text-blue-600">{reportesYesterday.length}</p>
+            <h3 className="text-xs sm:text-sm font-semibold text-blue-900 mb-1">Total</h3>
+            <p className="text-xl sm:text-3xl font-bold text-blue-600">{reportes.length}</p>
           </div>
           <div className="bg-green-50 p-3 sm:p-4 rounded-lg text-center">
             <h3 className="text-xs sm:text-sm font-semibold text-green-900 mb-1">Terminados</h3>
             <p className="text-xl sm:text-3xl font-bold text-green-600">
-              {reportesYesterday.filter(r => r.terminado).length}
+              {reportes.filter(r => r.terminado).length}
             </p>
           </div>
           <div className="bg-yellow-50 p-3 sm:p-4 rounded-lg text-center">
             <h3 className="text-xs sm:text-sm font-semibold text-yellow-900 mb-1">Pendientes</h3>
             <p className="text-xl sm:text-3xl font-bold text-yellow-600">
-              {reportesYesterday.filter(r => !r.terminado).length}
+              {reportes.filter(r => !r.terminado).length}
             </p>
           </div>
         </div>
@@ -446,7 +411,7 @@ export default function Home() {
         {Object.keys(todosSupervisoresConReportes).length > 0 && (
           <div className="space-y-3">
             <h2 className="text-lg sm:text-xl font-semibold text-gray-900 px-1">
-              Reportes por Supervisor - {formatDateSpanish(getYesterdayDate())}
+              Reportes por Supervisor
             </h2>
 
             {Object.entries(todosSupervisoresConReportes)
@@ -484,7 +449,7 @@ export default function Home() {
                             </div>
                             {!tieneReportes && (
                               <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded-full whitespace-nowrap">
-                                Sin actividad ayer
+                                Sin actividad
                               </span>
                             )}
                           </div>
@@ -499,7 +464,7 @@ export default function Home() {
                       {/* Stats rápidas */}
                       <div className="flex items-center justify-between text-xs sm:text-sm text-gray-600">
                         <span>
-                          {datos.reportes.length} reportes ayer • {totalHoras}h
+                          {datos.reportes.length} reportes • {totalHoras}h
                         </span>
 
                         {/* Indicador de técnicos sin reportar */}
@@ -509,7 +474,7 @@ export default function Home() {
 
                           return tecnicosSinReportar.length > 0 && (
                             <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
-                              📧 {tecnicosSinReportar.length} sin reporte ayer
+                              📧 {tecnicosSinReportar.length} sin reporte
                             </span>
                           )
                         })()}
@@ -554,7 +519,7 @@ export default function Home() {
                         <div className="px-3 sm:px-4 pb-3">
                           <div className="text-center py-3 text-gray-500 bg-gray-100 rounded-lg">
                             <p className="text-xs sm:text-sm">
-                              📋 No hay reportes del día anterior
+                              📋 No hay reportes registrados
                             </p>
                           </div>
                         </div>
@@ -570,7 +535,7 @@ export default function Home() {
                               : 'bg-gray-400 hover:bg-gray-500 text-white'
                           }`}
                         >
-                          📬 {tieneReportes ? 'Enviar Reporte de Ayer' : 'Enviar Sin Actividad Ayer'}
+                          📬 {tieneReportes ? 'Enviar Reporte' : 'Enviar Sin Actividad'}
                         </button>
                       </div>
                     </div>
@@ -582,10 +547,7 @@ export default function Home() {
 
         {Object.keys(todosSupervisoresConReportes).length === 0 && !loading && (
           <div className="text-center py-8 text-gray-500">
-            <p className="text-sm sm:text-base">No hay reportes del día anterior</p>
-            <p className="text-xs text-gray-400 mt-1">
-              ({reportes.length} reportes totales en la base de datos)
-            </p>
+            <p className="text-sm sm:text-base">No hay supervisores ni reportes en la base de datos</p>
             <button
               onClick={() => {
                 fetchReportes()

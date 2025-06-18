@@ -86,6 +86,7 @@ export default function Home() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteCode, setDeleteCode] = useState('')
   const [deleting, setDeleting] = useState(false)
+  const [currentEmailContent, setCurrentEmailContent] = useState(null)
 
   useEffect(() => {
     fetchReportes()
@@ -232,6 +233,7 @@ export default function Home() {
     return body
   }
 
+  // FUNCIÓN MEJORADA PARA ABRIR CORREO
   const openOutlookEmail = (nombreSupervisor, datos) => {
     const subject = `Reporte de Mantenimiento - ${nombreSupervisor} - ${new Date().toLocaleDateString('es-ES')}`
     
@@ -254,10 +256,19 @@ export default function Home() {
       })
     }
     
-    // Contenido completo para Outlook
+    // Generar el contenido completo del correo
     const body = generateEmailBody(datos.supervisor, datos.reportes)
     
-    // Construir el enlace mailto con CC
+    // Preparar la información del correo para el modal
+    const emailData = {
+      supervisor: nombreSupervisor,
+      email: datos.supervisor.email,
+      cc: tecnicosQueNoReportaron,
+      subject: subject,
+      body: body
+    }
+    
+    // Construir el enlace mailto
     let mailtoLink = `mailto:${datos.supervisor.email}?subject=${encodeURIComponent(subject)}`
     
     // Agregar CC si hay técnicos que no reportaron
@@ -266,11 +277,84 @@ export default function Home() {
       mailtoLink += `&cc=${encodeURIComponent(ccEmails)}`
     }
     
-    // Agregar el cuerpo del mensaje
-    mailtoLink += `&body=${encodeURIComponent(body)}`
+    // Intentar con el contenido completo primero
+    const fullMailtoLink = mailtoLink + `&body=${encodeURIComponent(body)}`
     
-    // Intentar abrir el cliente de correo
-    window.location.href = mailtoLink
+    // Función para intentar abrir el correo
+    const tryOpenEmail = (link) => {
+      return new Promise((resolve, reject) => {
+        // Crear elemento temporal
+        const tempLink = document.createElement('a')
+        tempLink.href = link
+        tempLink.style.display = 'none'
+        document.body.appendChild(tempLink)
+        
+        // Listener para detectar si la ventana pierde el foco (indicando que se abrió otra app)
+        const onBlur = () => {
+          setTimeout(() => {
+            if (document.body.contains(tempLink)) {
+              document.body.removeChild(tempLink)
+            }
+            window.removeEventListener('blur', onBlur)
+            resolve(true)
+          }, 100)
+        }
+        
+        // Listener de error o timeout
+        const timeout = setTimeout(() => {
+          if (document.body.contains(tempLink)) {
+            document.body.removeChild(tempLink)
+          }
+          window.removeEventListener('blur', onBlur)
+          reject(new Error('Timeout al abrir cliente de correo'))
+        }, 3000)
+        
+        window.addEventListener('blur', onBlur)
+        
+        try {
+          tempLink.click()
+          
+          // Si no hay blur en 1 segundo, probablemente falló
+          setTimeout(() => {
+            clearTimeout(timeout)
+            if (document.body.contains(tempLink)) {
+              document.body.removeChild(tempLink)
+            }
+            window.removeEventListener('blur', onBlur)
+            reject(new Error('No se detectó apertura del cliente de correo'))
+          }, 1000)
+          
+        } catch (error) {
+          clearTimeout(timeout)
+          if (document.body.contains(tempLink)) {
+            document.body.removeChild(tempLink)
+          }
+          window.removeEventListener('blur', onBlur)
+          reject(error)
+        }
+      })
+    }
+    
+    // Copiar contenido al portapapeles automáticamente como backup
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(body).catch(() => {
+        console.log('No se pudo copiar al portapapeles automáticamente')
+      })
+    }
+    
+    // Intentar abrir el correo
+    tryOpenEmail(fullMailtoLink)
+      .then(() => {
+        setMessage(`✅ Cliente de correo abierto para ${nombreSupervisor}. Contenido copiado al portapapeles como respaldo.`)
+      })
+      .catch((error) => {
+        console.log('Método automático falló, mostrando modal:', error.message)
+        
+        // Si falla, mostrar el modal con toda la información
+        setCurrentEmailContent(emailData)
+        setShowEmailModal(true)
+        setMessage(`📧 Preparando correo para ${nombreSupervisor}. Se abrirá ventana con los detalles.`)
+      })
   }
 
   // Función mejorada: combinar supervisores con y sin reportes
@@ -411,11 +495,12 @@ export default function Home() {
                             })()}
                             <button
                               onClick={() => openOutlookEmail(nombreSupervisor, datos)}
-                              className={`px-4 py-2 rounded text-sm font-medium ${
+                              className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
                                 tieneReportes 
                                   ? 'bg-blue-500 hover:bg-blue-600 text-white' 
                                   : 'bg-gray-400 hover:bg-gray-500 text-white'
                               }`}
+                              title={`Enviar reporte por correo a ${datos.supervisor.email}`}
                             >
                               📬 {tieneReportes ? 'Enviar Reporte' : 'Enviar Sin Actividad'}
                             </button>
@@ -568,17 +653,20 @@ export default function Home() {
           </div>
         )}
 
-        {/* Modal para mostrar contenido del correo */}
-        {showEmailModal && (
+        {/* MODAL MEJORADO PARA MOSTRAR CONTENIDO DEL CORREO */}
+        {showEmailModal && currentEmailContent && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-            <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
+            <div className="relative top-10 mx-auto p-5 border w-11/12 max-w-5xl shadow-lg rounded-md bg-white">
               <div className="mt-3">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-medium text-gray-900">
-                    Contenido de los Correos
+                  <h3 className="text-xl font-medium text-gray-900">
+                    📧 Crear Correo - {currentEmailContent.supervisor}
                   </h3>
                   <button
-                    onClick={() => setShowEmailModal(false)}
+                    onClick={() => {
+                      setShowEmailModal(false)
+                      setCurrentEmailContent(null)
+                    }}
                     className="text-gray-400 hover:text-gray-600"
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -587,33 +675,144 @@ export default function Home() {
                   </button>
                 </div>
                 
+                {/* Instrucciones claras */}
+                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h4 className="font-semibold text-blue-900 mb-2">📋 Instrucciones:</h4>
+                  <ol className="text-sm text-blue-800 space-y-1">
+                    <li><strong>1.</strong> Copia los destinatarios y asunto</li>
+                    <li><strong>2.</strong> Abre tu cliente de correo (Outlook, Gmail, etc.)</li>
+                    <li><strong>3.</strong> Crea un nuevo correo y pega la información</li>
+                    <li><strong>4.</strong> Copia y pega el contenido del mensaje</li>
+                  </ol>
+                </div>
+                
+                {/* Información del correo */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="space-y-3">
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Para:</label>
+                      <div className="flex items-center space-x-2">
+                        <input 
+                          type="text" 
+                          value={currentEmailContent.email} 
+                          readOnly 
+                          className="flex-1 p-2 text-sm bg-white border rounded"
+                        />
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(currentEmailContent.email)
+                            setMessage('✅ Email del destinatario copiado')
+                          }}
+                          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs"
+                        >
+                          Copiar
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {currentEmailContent.cc.length > 0 && (
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">CC:</label>
+                        <div className="flex items-center space-x-2">
+                          <input 
+                            type="text" 
+                            value={currentEmailContent.cc.join(', ')} 
+                            readOnly 
+                            className="flex-1 p-2 text-sm bg-white border rounded"
+                          />
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(currentEmailContent.cc.join(', '))
+                              setMessage('✅ Emails CC copiados')
+                            }}
+                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs"
+                          >
+                            Copiar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Asunto:</label>
+                      <div className="flex items-center space-x-2">
+                        <input 
+                          type="text" 
+                          value={currentEmailContent.subject} 
+                          readOnly 
+                          className="flex-1 p-2 text-sm bg-white border rounded"
+                        />
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(currentEmailContent.subject)
+                            setMessage('✅ Asunto copiado')
+                          }}
+                          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs"
+                        >
+                          Copiar
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Botón para intentar abrir correo nuevamente */}
+                    <div className="p-3 bg-green-50 rounded-lg">
+                      <button
+                        onClick={() => {
+                          const mailtoLink = `mailto:${currentEmailContent.email}?subject=${encodeURIComponent(currentEmailContent.subject)}${currentEmailContent.cc.length > 0 ? `&cc=${encodeURIComponent(currentEmailContent.cc.join(','))}` : ''}&body=${encodeURIComponent(currentEmailContent.body)}`
+                          window.location.href = mailtoLink
+                        }}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-medium"
+                      >
+                        🔄 Intentar Abrir Correo Automáticamente
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Contenido del mensaje */}
                 <div className="mb-4">
-                  <p className="text-sm text-gray-600 mb-2">
-                    Copia el siguiente contenido y pégalo en Outlook:
-                  </p>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-sm font-semibold text-gray-700">Contenido del Mensaje:</label>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(currentEmailContent.body)
+                        setMessage('✅ Contenido del mensaje copiado al portapapeles')
+                      }}
+                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-medium"
+                    >
+                      📋 Copiar Contenido
+                    </button>
+                  </div>
+                  
+                  <textarea
+                    value={currentEmailContent.body}
+                    readOnly
+                    className="w-full h-80 p-3 border border-gray-300 rounded-lg font-mono text-sm bg-gray-50 resize-none"
+                    placeholder="Contenido del correo..."
+                  />
+                </div>
+                
+                {/* Botones de acción */}
+                <div className="flex justify-between items-center">
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText('')
-                      setMessage('✅ Contenido copiado al portapapeles')
-                      setShowEmailModal(false)
+                      const fullEmailText = `Para: ${currentEmailContent.email}\n${currentEmailContent.cc.length > 0 ? `CC: ${currentEmailContent.cc.join(', ')}\n` : ''}Asunto: ${currentEmailContent.subject}\n\n${currentEmailContent.body}`
+                      navigator.clipboard.writeText(fullEmailText)
+                      setMessage('✅ Email completo copiado (destinatarios + asunto + contenido)')
                     }}
-                    className="mb-3 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded"
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded font-medium"
                   >
-                    📋 Copiar Todo
+                    📧 Copiar Email Completo
                   </button>
-                </div>
-
-                <textarea
-                  value=""
-                  readOnly
-                  className="w-full h-96 p-3 border border-gray-300 rounded-lg font-mono text-sm"
-                  style={{ resize: 'none' }}
-                />
-                
-                <div className="mt-4 flex justify-end">
+                  
                   <button
-                    onClick={() => setShowEmailModal(false)}
-                    className="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded"
+                    onClick={() => {
+                      setShowEmailModal(false)
+                      setCurrentEmailContent(null)
+                    }}
+                    className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded font-medium"
                   >
                     Cerrar
                   </button>

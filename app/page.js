@@ -643,3 +643,208 @@ export default function Home() {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Ingresa el código de validación para continuar:
                   </label>
+                  <input
+                    type="text"
+                    value={deleteCode}
+                    onChange={(e) => setDeleteCode(e.target.value)}
+                    placeholder="Código de validación"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    maxLength="2"
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => {
+                      setShowDeleteModal(false)
+                      setDeleteCode('')
+                      setError('')
+                    }}
+                    className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-md transition-colors text-sm"
+                    disabled={deleting}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={deleteAllReportes}
+                    disabled={deleting || deleteCode !== '23'}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded-md transition-colors text-sm"
+                  >
+                    {deleting ? 'Eliminando...' : 'Eliminar Todo'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL MEJORADO PARA MOSTRAR CONTENIDO DEL CORREO - Optimizado para móvil */}
+        {showEmailModal && currentEmailContent && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 px-2 sm:px-0">
+            <div className="relative top-4 sm:top-10 mx-auto p-3 sm:p-5 border w-full max-w-full sm:max-w-5xl shadow-lg rounded-md bg-white mb-4">
+              <div className="mt-3">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg sm:text-xl font-medium text-gray-900">
+                    📧 Crear Correo - {currentEmailContent.supervisor}
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowEmailModal(false)
+                      setCurrentEmailContent(null)
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                  </button>
+                </div>
+                
+                {/* Instrucciones claras - Mejoradas para móvil */}
+                <div className="mb-4 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h4 className="font-semibold text-blue-900 mb-2 text-sm sm:text-base">📋 Instrucciones:</h4>
+                  <ol className="text-xs sm:text-sm text-blue-800 space-y-1">
+                    <li><strong>1.</strong> Copia los destinatarios y asunto</li>
+                    <li><strong>2.</strong> Abre tu cliente de correo (Outlook, Gmail, etc.)</li>
+                    <li><strong>3.</strong> Crea un nuevo correo y pega la información</li>
+                    <li><strong>4.</strong> Copia y pega el contenido del mensaje</li>
+                  </ol>
+                </div>
+                
+                {/* Información del correo - Layout mejorado para móvil */}
+                <div className="grid grid-cols-1 gap-4 mb-4">
+                  <div className="space-y-3">
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Para:</label>
+                      <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                        <input 
+                          type="text" 
+                          value={currentEmailContent.email} 
+                          readOnly 
+                          className="flex-1 p-2 text-sm bg-white border rounded"
+                        />
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(currentEmailContent.email)
+                            setMessage('✅ Email del destinatario copiado')
+                          }}
+                          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-xs w-full sm:w-auto"
+                        >
+                          Copiar
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {currentEmailContent.cc.length > 0 && (
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">CC:</label>
+                        <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                          <input 
+                            type="text" 
+                            value={currentEmailContent.cc.join(', ')} 
+                            readOnly 
+                            className="flex-1 p-2 text-sm bg-white border rounded"
+                          />
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(currentEmailContent.cc.join(', '))
+                              setMessage('✅ Emails CC copiados')
+                            }}
+                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-xs w-full sm:w-auto"
+                          >
+                            Copiar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Asunto:</label>
+                      <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                        <input 
+                          type="text" 
+                          value={currentEmailContent.subject} 
+                          readOnly 
+                          className="flex-1 p-2 text-sm bg-white border rounded"
+                        />
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(currentEmailContent.subject)
+                            setMessage('✅ Asunto copiado')
+                          }}
+                          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-xs w-full sm:w-auto"
+                        >
+                          Copiar
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Botón para intentar abrir correo nuevamente */}
+                    <div className="p-3 bg-green-50 rounded-lg">
+                      <button
+                        onClick={() => {
+                          const mailtoLink = `mailto:${currentEmailContent.email}?subject=${encodeURIComponent(currentEmailContent.subject)}${currentEmailContent.cc.length > 0 ? `&cc=${encodeURIComponent(currentEmailContent.cc.join(','))}` : ''}&body=${encodeURIComponent(currentEmailContent.body)}`
+                          window.location.href = mailtoLink
+                        }}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-medium"
+                      >
+                        🔄 Intentar Abrir Correo Automáticamente
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Contenido del mensaje - Mejorado para móvil */}
+                <div className="mb-4">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-2 space-y-2 sm:space-y-0">
+                    <label className="block text-sm font-semibold text-gray-700">Contenido del Mensaje:</label>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(currentEmailContent.body)
+                        setMessage('✅ Contenido del mensaje copiado al portapapeles')
+                      }}
+                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-medium w-full sm:w-auto"
+                    >
+                      📋 Copiar Contenido
+                    </button>
+                  </div>
+                  
+                  <textarea
+                    value={currentEmailContent.body}
+                    readOnly
+                    className="w-full h-60 sm:h-80 p-3 border border-gray-300 rounded-lg font-mono text-xs sm:text-sm bg-gray-50 resize-none"
+                    placeholder="Contenido del correo..."
+                  />
+                </div>
+                
+                {/* Botones de acción - Mejorados para móvil */}
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-3 sm:space-y-0">
+                  <button
+                    onClick={() => {
+                      const fullEmailText = `Para: ${currentEmailContent.email}\n${currentEmailContent.cc.length > 0 ? `CC: ${currentEmailContent.cc.join(', ')}\n` : ''}Asunto: ${currentEmailContent.subject}\n\n${currentEmailContent.body}`
+                      navigator.clipboard.writeText(fullEmailText)
+                      setMessage('✅ Email completo copiado (destinatarios + asunto + contenido)')
+                    }}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded font-medium w-full sm:w-auto"
+                  >
+                    📧 Copiar Email Completo
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      setShowEmailModal(false)
+                      setCurrentEmailContent(null)
+                    }}
+                    className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded font-medium w-full sm:w-auto"
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}

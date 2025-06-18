@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-
 // Data de supervisores integrada con emails de técnicos
 const supervisorsData = {
   'Edisson Bejarano': {
@@ -14,6 +13,7 @@ const supervisorsData = {
       'Carlos Cisneros',
       'César Sánchez'
     ],
+    // Emails de los técnicos (agregar según tengas los datos reales)
     emailsTecnicos: {
       'Roberto Córdova': 'roberto.cordova@celec.gob.ec',
       'Juan Carrión': 'juan.carrion@celec.gob.ec',
@@ -34,6 +34,7 @@ const supervisorsData = {
       'Israel Pérez',
       'Kevin Vargas'
     ],
+    // Emails de los técnicos (agregar según tengas los datos reales)
     emailsTecnicos: {
       'Dario Ojeda': 'dario.ojeda@celec.gob.ec',
       'Edgar Ormaza': 'edgar.ormaza@celec.gob.ec',
@@ -86,11 +87,8 @@ export default function Home() {
   const [deleteCode, setDeleteCode] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [currentEmailContent, setCurrentEmailContent] = useState(null)
-  const [expandedSupervisor, setExpandedSupervisor] = useState(null)
-  const [isMounted, setIsMounted] = useState(false)
 
   useEffect(() => {
-    setIsMounted(true)
     fetchReportes()
   }, [])
 
@@ -99,15 +97,15 @@ export default function Home() {
       setLoading(true)
       const response = await fetch('/api/reportes')
       const data = await response.json()
-
+      
       if (response.ok) {
         setReportes(data.reportes)
       } else {
         setError(data.error || 'Error al cargar reportes')
       }
-    } catch (err) {
+    } catch (error) {
       setError('Error al conectar con el servidor')
-      console.error('Error fetching reportes:', err)
+      console.error('Error fetching reportes:', error)
     } finally {
       setLoading(false)
     }
@@ -124,9 +122,9 @@ export default function Home() {
       const response = await fetch('/api/reportes', {
         method: 'DELETE',
       })
-
+      
       const data = await response.json()
-
+      
       if (response.ok) {
         setReportes([])
         setMessage('✅ Todos los registros han sido eliminados exitosamente')
@@ -135,9 +133,9 @@ export default function Home() {
       } else {
         setError(data.error || 'Error al eliminar registros')
       }
-    } catch (err) {
+    } catch (error) {
       setError('Error al conectar con el servidor')
-      console.error('Error deleting reportes:', err)
+      console.error('Error deleting reportes:', error)
     } finally {
       setDeleting(false)
     }
@@ -156,20 +154,24 @@ export default function Home() {
     const reportesTerminados = reportes.filter(r => r.terminado).length
     const reportesPendientes = reportes.length - reportesTerminados
 
+    // Agrupar horas por técnico
     const horasPorTecnico = {}
-
+    
+    // Primero: inicializar TODOS los técnicos asignados con 0 horas
     if (supervisor.mecanicos && supervisor.mecanicos.length > 0) {
       supervisor.mecanicos.forEach(tecnico => {
         horasPorTecnico[tecnico] = 0
       })
     }
-
+    
+    // Segundo: sumar las horas reales de los que SÍ reportaron
     reportes.forEach(reporte => {
       const tecnico = reporte.tecnico
       const horas = reporte.tiempo || 0
       if (horasPorTecnico.hasOwnProperty(tecnico)) {
         horasPorTecnico[tecnico] += horas
       } else {
+        // Si el técnico no está en la lista asignada, agregarlo anyway
         horasPorTecnico[tecnico] = horas
       }
     })
@@ -177,15 +179,16 @@ export default function Home() {
     let body = `REPORTE DE MANTENIMIENTO\n`
     body += `Supervisor: ${supervisor.nombre}\n`
     body += `Fecha: ${new Date().toLocaleDateString('es-ES')}\n\n`
-
+    
     body += `RESUMEN:\n`
     body += `- Total de reportes: ${reportes.length}\n`
     body += `- Trabajos terminados: ${reportesTerminados}\n`
     body += `- Trabajos pendientes: ${reportesPendientes}\n`
-
+    
+    // Mostrar TODOS los técnicos (con y sin horas)
     if (Object.keys(horasPorTecnico).length > 0) {
       Object.entries(horasPorTecnico)
-        .sort(([a], [b]) => a.localeCompare(b))
+        .sort(([a], [b]) => a.localeCompare(b)) // Ordenar alfabéticamente
         .forEach(([tecnico, horas]) => {
           if (horas === 0) {
             body += `- ${tecnico}: ${horas} horas ⚠️ SIN REPORTE\n`
@@ -196,16 +199,17 @@ export default function Home() {
     } else {
       body += `- Sin técnicos asignados registrados\n`
     }
-
+    
     body += `\n`
     body += `DETALLE DE REPORTES:\n`
     body += `${'='.repeat(50)}\n\n`
-
+    
     if (reportes.length === 0) {
       body += `SIN ACTIVIDAD REPORTADA EN ESTE PERÍODO\n\n`
       body += `No se registraron trabajos de mantenimiento para los técnicos\n`
       body += `asignados a este supervisor durante el período reportado.\n\n`
-
+      
+      // Listar técnicos que deberían haber reportado
       if (supervisor.mecanicos && supervisor.mecanicos.length > 0) {
         body += `TÉCNICOS ASIGNADOS QUE NO REPORTARON:\n`
         supervisor.mecanicos.forEach((tecnico, index) => {
@@ -225,19 +229,23 @@ export default function Home() {
         body += `   Estado: ${reporte.terminado ? 'TERMINADO' : 'PENDIENTE'}\n\n`
       })
     }
-
+    
     return body
   }
 
+  // FUNCIÓN MEJORADA PARA ABRIR CORREO
   const openOutlookEmail = (nombreSupervisor, datos) => {
     const subject = `Reporte de Mantenimiento - ${nombreSupervisor} - ${new Date().toLocaleDateString('es-ES')}`
-
+    
+    // Identificar técnicos que NO reportaron
     const tecnicosQueNoReportaron = []
     const emailsTecnicos = datos.supervisor.emailsTecnicos || {}
-
+    
     if (datos.supervisor.mecanicos) {
+      // Obtener lista de técnicos que SÍ reportaron
       const tecnicosQueReportaron = [...new Set(datos.reportes.map(r => r.tecnico))]
-
+      
+      // Encontrar los que NO reportaron
       datos.supervisor.mecanicos.forEach(tecnico => {
         if (!tecnicosQueReportaron.includes(tecnico)) {
           const emailTecnico = emailsTecnicos[tecnico]
@@ -247,9 +255,11 @@ export default function Home() {
         }
       })
     }
-
+    
+    // Generar el contenido completo del correo
     const body = generateEmailBody(datos.supervisor, datos.reportes)
-
+    
+    // Preparar la información del correo para el modal
     const emailData = {
       supervisor: nombreSupervisor,
       email: datos.supervisor.email,
@@ -257,52 +267,102 @@ export default function Home() {
       subject: subject,
       body: body
     }
-
-    // Verificar si estamos en el cliente y si es móvil
-    if (!isMounted) return
-
-    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768
-
-    if (isMobile) {
-      setCurrentEmailContent(emailData)
-      setShowEmailModal(true)
-      setMessage(`📧 Preparando correo para ${nombreSupervisor}`)
-      return
-    }
-
-    // Para desktop, intentar abrir automáticamente
+    
+    // Construir el enlace mailto
     let mailtoLink = `mailto:${datos.supervisor.email}?subject=${encodeURIComponent(subject)}`
-
+    
+    // Agregar CC si hay técnicos que no reportaron
     if (tecnicosQueNoReportaron.length > 0) {
       const ccEmails = tecnicosQueNoReportaron.join(',')
       mailtoLink += `&cc=${encodeURIComponent(ccEmails)}`
     }
-
+    
+    // Intentar con el contenido completo primero
     const fullMailtoLink = mailtoLink + `&body=${encodeURIComponent(body)}`
-
-    if (typeof window !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+    
+    // Función para intentar abrir el correo
+    const tryOpenEmail = (link) => {
+      return new Promise((resolve, reject) => {
+        // Crear elemento temporal
+        const tempLink = document.createElement('a')
+        tempLink.href = link
+        tempLink.style.display = 'none'
+        document.body.appendChild(tempLink)
+        
+        // Listener para detectar si la ventana pierde el foco (indicando que se abrió otra app)
+        const onBlur = () => {
+          setTimeout(() => {
+            if (document.body.contains(tempLink)) {
+              document.body.removeChild(tempLink)
+            }
+            window.removeEventListener('blur', onBlur)
+            resolve(true)
+          }, 100)
+        }
+        
+        // Listener de error o timeout
+        const timeout = setTimeout(() => {
+          if (document.body.contains(tempLink)) {
+            document.body.removeChild(tempLink)
+          }
+          window.removeEventListener('blur', onBlur)
+          reject(new Error('Timeout al abrir cliente de correo'))
+        }, 3000)
+        
+        window.addEventListener('blur', onBlur)
+        
+        try {
+          tempLink.click()
+          
+          // Si no hay blur en 1 segundo, probablemente falló
+          setTimeout(() => {
+            clearTimeout(timeout)
+            if (document.body.contains(tempLink)) {
+              document.body.removeChild(tempLink)
+            }
+            window.removeEventListener('blur', onBlur)
+            reject(new Error('No se detectó apertura del cliente de correo'))
+          }, 1000)
+          
+        } catch (error) {
+          clearTimeout(timeout)
+          if (document.body.contains(tempLink)) {
+            document.body.removeChild(tempLink)
+          }
+          window.removeEventListener('blur', onBlur)
+          reject(error)
+        }
+      })
+    }
+    
+    // Copiar contenido al portapapeles automáticamente como backup
+    if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(body).catch(() => {
         console.log('No se pudo copiar al portapapeles automáticamente')
       })
     }
-
-    try {
-      if (typeof window !== 'undefined') {
-        window.location.href = fullMailtoLink
-        setMessage(`✅ Cliente de correo abierto para ${nombreSupervisor}`)
-      }
-    } catch (err) {
-      console.error('Error opening email client:', err)
-      setCurrentEmailContent(emailData)
-      setShowEmailModal(true)
-      setMessage(`📧 Preparando correo para ${nombreSupervisor}`)
-    }
+    
+    // Intentar abrir el correo
+    tryOpenEmail(fullMailtoLink)
+      .then(() => {
+        setMessage(`✅ Cliente de correo abierto para ${nombreSupervisor}. Contenido copiado al portapapeles como respaldo.`)
+      })
+      .catch((error) => {
+        console.log('Método automático falló, mostrando modal:', error.message)
+        
+        // Si falla, mostrar el modal con toda la información
+        setCurrentEmailContent(emailData)
+        setShowEmailModal(true)
+        setMessage(`📧 Preparando correo para ${nombreSupervisor}. Se abrirá ventana con los detalles.`)
+      })
   }
 
+  // Función mejorada: combinar supervisores con y sin reportes
   const getAllSupervisoresWithReportes = () => {
     const gruposSupervisores = groupReportesBySupervisor(reportes)
     const todosSupervisores = {}
 
+    // Primero agregar TODOS los supervisores de la data fija (incluso sin reportes)
     Object.entries(supervisorsData).forEach(([nombre, data]) => {
       todosSupervisores[nombre] = {
         supervisor: {
@@ -315,6 +375,7 @@ export default function Home() {
       }
     })
 
+    // Luego sobrescribir con los que SÍ tienen reportes
     Object.entries(gruposSupervisores).forEach(([nombre, datos]) => {
       if (todosSupervisores[nombre]) {
         todosSupervisores[nombre].reportes = datos.reportes
@@ -326,474 +387,441 @@ export default function Home() {
 
   const todosSupervisoresConReportes = getAllSupervisoresWithReportes()
 
-  // No renderizar hasta que el componente esté montado en el cliente
-  if (!isMounted) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Cargando...</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header fijo para móviles */}
-      <div className="sticky top-0 z-40 bg-white shadow-sm border-b">
-        <div className="px-4 py-3">
-          <h1 className="text-lg sm:text-2xl font-bold text-gray-900 truncate">
-            Sistema de Reportes
-          </h1>
-          <p className="text-xs sm:text-sm text-gray-600 mt-1">
-            Mantenimiento Mecánico
-          </p>
-        </div>
-      </div>
-
-      <div className="px-3 sm:px-4 lg:px-8 py-4 max-w-7xl mx-auto">
-        {/* Mensajes - Optimizados para móvil */}
-        {message && (
-          <div className="mb-3 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg text-sm">
-            {message}
-          </div>
-        )}
-
-        {error && (
-          <div className="mb-3 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
-            {error}
-          </div>
-        )}
-
-        {/* Estadísticas - Stack en móvil, grid en desktop */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
-          <div className="bg-blue-50 p-3 sm:p-4 rounded-lg text-center">
-            <h3 className="text-xs sm:text-sm font-semibold text-blue-900 mb-1">Total</h3>
-            <p className="text-xl sm:text-3xl font-bold text-blue-600">{reportes.length}</p>
-          </div>
-          <div className="bg-green-50 p-3 sm:p-4 rounded-lg text-center">
-            <h3 className="text-xs sm:text-sm font-semibold text-green-900 mb-1">Terminados</h3>
-            <p className="text-xl sm:text-3xl font-bold text-green-600">
-              {reportes.filter(r => r.terminado).length}
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="bg-white shadow rounded-lg">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h1 className="text-2xl font-bold text-gray-900">
+              Sistema de Reportes de Mantenimiento
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Gestiona reportes de mantenimiento mecánico
             </p>
           </div>
-          <div className="bg-yellow-50 p-3 sm:p-4 rounded-lg text-center">
-            <h3 className="text-xs sm:text-sm font-semibold text-yellow-900 mb-1">Pendientes</h3>
-            <p className="text-xl sm:text-3xl font-bold text-yellow-600">
-              {reportes.filter(r => !r.terminado).length}
-            </p>
-          </div>
-        </div>
 
-        {/* Botón de actualizar - Más grande en móvil */}
-        <div className="flex justify-center mb-4">
-          <button
-            onClick={() => {
-              fetchReportes()
-            }}
-            disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-3 px-6 sm:px-8 rounded-lg transition-colors text-sm sm:text-base w-full sm:w-auto"
-          >
-            {loading ? 'Actualizando...' : 'Actualizar Datos'}
-          </button>
-        </div>
+          <div className="p-6">
+            {/* Mensajes */}
+            {message && (
+              <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
+                {message}
+              </div>
+            )}
 
-        {/* Lista de supervisores - Optimizada para móvil */}
-        {Object.keys(todosSupervisoresConReportes).length > 0 && (
-          <div className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-900 px-1">
-              Reportes por Supervisor
-            </h2>
+            {error && (
+              <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+                {error}
+              </div>
+            )}
 
-            {Object.entries(todosSupervisoresConReportes)
-              .sort(([a], [b]) => a.localeCompare(b))
-              .map(([nombreSupervisor, datos]) => {
-                const tieneReportes = datos.reportes.length > 0
-                const totalHoras = datos.reportes.reduce((sum, r) => sum + (r.tiempo || 0), 0)
-                const isExpanded = expandedSupervisor === nombreSupervisor
+            {/* Estadísticas - Solo 3 paneles */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <h3 className="text-lg font-semibold text-blue-900">Total Reportes</h3>
+                <p className="text-3xl font-bold text-blue-600">{reportes.length}</p>
+              </div>
+              <div className="bg-green-50 p-4 rounded-lg">
+                <h3 className="text-lg font-semibold text-green-900">Terminados</h3>
+                <p className="text-3xl font-bold text-green-600">
+                  {reportes.filter(r => r.terminado).length}
+                </p>
+              </div>
+              <div className="bg-yellow-50 p-4 rounded-lg">
+                <h3 className="text-lg font-semibold text-yellow-900">Pendientes</h3>
+                <p className="text-3xl font-bold text-yellow-600">
+                  {reportes.filter(r => !r.terminado).length}
+                </p>
+              </div>
+            </div>
 
-                return (
-                  <div 
-                    key={nombreSupervisor} 
-                    className={`border rounded-lg ${
-                      tieneReportes ? 'border-gray-200 bg-white' : 'border-gray-300 bg-gray-50'
-                    } shadow-sm`}
-                  >
-                    {/* Header del supervisor - Clickeable en móvil */}
-                    <div 
-                      className="p-3 sm:p-4 cursor-pointer sm:cursor-default"
-                      onClick={() => {
-                        if (typeof window !== 'undefined' && window.innerWidth <= 768) {
-                          setExpandedSupervisor(isExpanded ? null : nombreSupervisor)
-                        }
-                      }}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2">
-                            <h3 className="text-base sm:text-lg font-semibold text-gray-800 truncate">
+            {/* Botón de actualizar */}
+            <div className="flex justify-center mb-6">
+              <button
+                onClick={() => {
+                  fetchReportes()
+                }}
+                disabled={loading}
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-3 px-6 rounded-lg transition-colors"
+              >
+                {loading ? 'Actualizando...' : 'Actualizar Datos'}
+              </button>
+            </div>
+
+            {/* Vista mejorada: TODOS los supervisores */}
+            {Object.keys(todosSupervisoresConReportes).length > 0 && (
+              <div className="space-y-6">
+                <h2 className="text-xl font-semibold text-gray-900">
+                  Reportes por Supervisor
+                </h2>
+                
+                {Object.entries(todosSupervisoresConReportes)
+                  .sort(([a], [b]) => a.localeCompare(b)) // Ordenar alfabéticamente
+                  .map(([nombreSupervisor, datos]) => {
+                    const tieneReportes = datos.reportes.length > 0
+                    const totalHoras = datos.reportes.reduce((sum, r) => sum + (r.tiempo || 0), 0)
+                    
+                    return (
+                      <div 
+                        key={nombreSupervisor} 
+                        className={`border rounded-lg p-4 ${
+                          tieneReportes ? 'border-gray-200 bg-white' : 'border-gray-300 bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex justify-between items-center mb-3">
+                          <div className="flex items-center space-x-3">
+                            <h3 className="text-lg font-semibold text-gray-800">
                               {nombreSupervisor}
                             </h3>
-                            {/* Indicador móvil */}
-                            <div className="sm:hidden">
-                              {isExpanded ? '▼' : '▶'}
-                            </div>
                             {!tieneReportes && (
-                              <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded-full whitespace-nowrap">
+                              <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded-full">
                                 Sin actividad
                               </span>
                             )}
                           </div>
-
-                          {/* Email - Solo visible en desktop o cuando está expandido */}
-                          <div className={`text-xs sm:text-sm text-gray-500 mt-1 ${typeof window !== 'undefined' && window.innerWidth <= 768 && !isExpanded ? 'hidden' : ''}`}>
-                            {datos.supervisor.email}
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm text-gray-500">
+                              {datos.supervisor.email}
+                            </span>
+                            {/* Mostrar indicador si hay técnicos sin reportar */}
+                            {(() => {
+                              const tecnicosQueReportaron = [...new Set(datos.reportes.map(r => r.tecnico))]
+                              const tecnicosSinReportar = datos.supervisor.mecanicos?.filter(t => !tecnicosQueReportaron.includes(t)) || []
+                              
+                              return tecnicosSinReportar.length > 0 && (
+                                <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
+                                  📧 {tecnicosSinReportar.length} técnicos no reportan
+                                </span>
+                              )
+                            })()}
+                            <button
+                              onClick={() => openOutlookEmail(nombreSupervisor, datos)}
+                              className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
+                                tieneReportes 
+                                  ? 'bg-blue-500 hover:bg-blue-600 text-white' 
+                                  : 'bg-gray-400 hover:bg-gray-500 text-white'
+                              }`}
+                              title={`Enviar reporte por correo a ${datos.supervisor.email}`}
+                            >
+                              📬 {tieneReportes ? 'Enviar Reporte' : 'Enviar Sin Actividad'}
+                            </button>
                           </div>
                         </div>
-                      </div>
-
-                      {/* Stats rápidas */}
-                      <div className="flex items-center justify-between text-xs sm:text-sm text-gray-600">
-                        <span>
-                          {datos.reportes.length} reportes • {totalHoras}h
-                        </span>
-
-                        {/* Indicador de técnicos sin reportar */}
-                        {(() => {
-                          const tecnicosQueReportaron = [...new Set(datos.reportes.map(r => r.tecnico))]
-                          const tecnicosSinReportar = datos.supervisor.mecanicos?.filter(t => !tecnicosQueReportaron.includes(t)) || []
-
-                          return tecnicosSinReportar.length > 0 && (
-                            <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">
-                              📧 {tecnicosSinReportar.length} sin reporte
+                        
+                        <div className="text-sm text-gray-600 mb-3">
+                          {datos.reportes.length} reportes • {totalHoras} horas totales
+                          {!tieneReportes && (
+                            <span className="text-orange-600 ml-2">
+                              • No se registró actividad en este período
                             </span>
-                          )
-                        })()}
-                      </div>
-                    </div>
-
-                    {/* Contenido expandible - Siempre visible en desktop */}
-                    <div className={`${typeof window !== 'undefined' && window.innerWidth <= 768 ? (isExpanded ? 'block' : 'hidden') : 'block'}`}>
-                      {/* Técnicos asignados */}
-                      <div className="px-3 sm:px-4 pb-2">
-                        <div className="text-xs text-gray-500">
-                          <strong>Técnicos:</strong> {datos.supervisor.mecanicos?.join(', ') || 'No asignados'}
+                          )}
+                          {/* Mostrar mecánicos asignados */}
+                          <div className="text-xs text-gray-500 mt-1">
+                            Técnicos: {datos.supervisor.mecanicos?.join(', ') || 'No asignados'}
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Lista de reportes */}
-                      {tieneReportes ? (
-                        <div className="px-3 sm:px-4 pb-3">
-                          <div className="space-y-2 max-h-32 sm:max-h-40 overflow-y-auto">
+                        {tieneReportes ? (
+                          <div className="grid gap-2 max-h-40 overflow-y-auto">
                             {datos.reportes.map((reporte, index) => (
-                              <div key={index} className="text-xs sm:text-sm bg-gray-50 border border-gray-200 p-2 sm:p-3 rounded">
-                                <div className="flex justify-between items-start">
-                                  <div className="flex-1 min-w-0">
-                                    <div className="font-semibold text-gray-900 truncate">{reporte.tecnico}</div>
-                                    <div className="text-gray-600 text-xs truncate">
-                                      {reporte.planta} • {reporte.equipo}
-                                    </div>
+                              <div key={index} className="text-sm bg-white border border-gray-200 p-3 rounded shadow-sm">
+                                <div className="flex justify-between items-center">
+                                  <div className="text-gray-800">
+                                    <span className="font-semibold text-gray-900">{reporte.tecnico}</span>
+                                    <span className="text-gray-600"> • {reporte.planta} • {reporte.equipo}</span>
                                   </div>
-                                  <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+                                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                     reporte.terminado 
                                       ? 'bg-green-500 text-white' 
                                       : 'bg-yellow-500 text-white'
                                   }`}>
-                                    {reporte.terminado ? 'OK' : 'Pend'}
+                                    {reporte.terminado ? 'Terminado' : 'Pendiente'}
                                   </span>
                                 </div>
                               </div>
                             ))}
                           </div>
-                        </div>
-                      ) : (
-                        <div className="px-3 sm:px-4 pb-3">
-                          <div className="text-center py-3 text-gray-500 bg-gray-100 rounded-lg">
-                            <p className="text-xs sm:text-sm">
-                              📋 No hay reportes registrados
+                        ) : (
+                          <div className="text-center py-4 text-gray-500 bg-gray-100 rounded-lg">
+                            <p className="text-sm">
+                              📋 No hay reportes registrados para este supervisor
+                            </p>
+                            <p className="text-xs mt-1">
+                              Puedes enviar un reporte indicando &quot;sin actividad&quot; para mantener el registro
                             </p>
                           </div>
-                        </div>
-                      )}
+                        )}
+                      </div>
+                    )
+                  })}
+              </div>
+            )}
 
-                      {/* Botón de enviar correo - Más prominente en móvil */}
-                      <div className="px-3 sm:px-4 pb-3 sm:pb-4">
+            {Object.keys(todosSupervisoresConReportes).length === 0 && !loading && (
+              <div className="text-center py-8 text-gray-500">
+                <p>No hay supervisores ni reportes en la base de datos</p>
+                <button
+                  onClick={() => {
+                    fetchReportes()
+                  }}
+                  className="mt-2 text-blue-600 hover:text-blue-800"
+                >
+                  Actualizar
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Botón de eliminar registros - Discreto al final */}
+          <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="text-xs text-gray-500 hover:text-red-600 transition-colors"
+              >
+                🗑️ Eliminar todos los registros
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Modal para eliminar registros */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-medium text-red-600">
+                    ⚠️ Eliminar Registros
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowDeleteModal(false)
+                      setDeleteCode('')
+                      setError('')
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                  </button>
+                </div>
+                
+                <div className="mb-4">
+                  <p className="text-sm text-gray-700 mb-3">
+                    Esta acción eliminará <strong>TODOS</strong> los registros de la base de datos de forma permanente.
+                  </p>
+                  <p className="text-sm text-red-600 mb-4">
+                    ⚠️ Esta operación no se puede deshacer.
+                  </p>
+                  
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ingresa el código de validación para continuar:
+                  </label>
+                  <input
+                    type="text"
+                    value={deleteCode}
+                    onChange={(e) => setDeleteCode(e.target.value)}
+                    placeholder="Código de validación"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    maxLength="2"
+                  />
+                </div>
+
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => {
+                      setShowDeleteModal(false)
+                      setDeleteCode('')
+                      setError('')
+                    }}
+                    className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-md transition-colors"
+                    disabled={deleting}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={deleteAllReportes}
+                    disabled={deleting || deleteCode !== '23'}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded-md transition-colors"
+                  >
+                    {deleting ? 'Eliminando...' : 'Eliminar Todo'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL MEJORADO PARA MOSTRAR CONTENIDO DEL CORREO */}
+        {showEmailModal && currentEmailContent && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-10 mx-auto p-5 border w-11/12 max-w-5xl shadow-lg rounded-md bg-white">
+              <div className="mt-3">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-medium text-gray-900">
+                    📧 Crear Correo - {currentEmailContent.supervisor}
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowEmailModal(false)
+                      setCurrentEmailContent(null)
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                  </button>
+                </div>
+                
+                {/* Instrucciones claras */}
+                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h4 className="font-semibold text-blue-900 mb-2">📋 Instrucciones:</h4>
+                  <ol className="text-sm text-blue-800 space-y-1">
+                    <li><strong>1.</strong> Copia los destinatarios y asunto</li>
+                    <li><strong>2.</strong> Abre tu cliente de correo (Outlook, Gmail, etc.)</li>
+                    <li><strong>3.</strong> Crea un nuevo correo y pega la información</li>
+                    <li><strong>4.</strong> Copia y pega el contenido del mensaje</li>
+                  </ol>
+                </div>
+                
+                {/* Información del correo */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="space-y-3">
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Para:</label>
+                      <div className="flex items-center space-x-2">
+                        <input 
+                          type="text" 
+                          value={currentEmailContent.email} 
+                          readOnly 
+                          className="flex-1 p-2 text-sm bg-white border rounded"
+                        />
                         <button
-                          onClick={() => openOutlookEmail(nombreSupervisor, datos)}
-                          className={`w-full sm:w-auto px-4 py-3 sm:py-2 rounded-lg text-sm font-medium transition-colors ${
-                            tieneReportes 
-                              ? 'bg-blue-500 hover:bg-blue-600 text-white' 
-                              : 'bg-gray-400 hover:bg-gray-500 text-white'
-                          }`}
+                          onClick={() => {
+                            navigator.clipboard.writeText(currentEmailContent.email)
+                            setMessage('✅ Email del destinatario copiado')
+                          }}
+                          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs"
                         >
-                          📬 {tieneReportes ? 'Enviar Reporte' : 'Enviar Sin Actividad'}
+                          Copiar
                         </button>
                       </div>
                     </div>
+                    
+                    {currentEmailContent.cc.length > 0 && (
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">CC:</label>
+                        <div className="flex items-center space-x-2">
+                          <input 
+                            type="text" 
+                            value={currentEmailContent.cc.join(', ')} 
+                            readOnly 
+                            className="flex-1 p-2 text-sm bg-white border rounded"
+                          />
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(currentEmailContent.cc.join(', '))
+                              setMessage('✅ Emails CC copiados')
+                            }}
+                            className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs"
+                          >
+                            Copiar
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )
-              })}
-          </div>
-        )}
-
-        {Object.keys(todosSupervisoresConReportes).length === 0 && !loading && (
-          <div className="text-center py-8 text-gray-500">
-            <p className="text-sm sm:text-base">No hay supervisores ni reportes en la base de datos</p>
-            <button
-              onClick={() => {
-                fetchReportes()
-              }}
-              className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
-            >
-              Actualizar
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Footer con botón de eliminar - Fijo en la parte inferior en móvil */}
-      <div className="sticky bottom-0 sm:relative bg-white border-t border-gray-200 px-4 py-3 mt-8">
-        <div className="flex justify-center sm:justify-end">
-          <button
-            onClick={() => setShowDeleteModal(true)}
-            className="text-xs text-gray-500 hover:text-red-600 transition-colors py-2 px-4"
-          >
-            🗑️ Eliminar todos los registros
-          </button>
-        </div>
-      </div>
-
-      {/* Modal para eliminar registros - Optimizado para móvil */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 p-4">
-          <div className="relative top-4 sm:top-20 mx-auto border w-full max-w-md shadow-lg rounded-lg bg-white">
-            <div className="p-4 sm:p-5">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium text-red-600">
-                  ⚠️ Eliminar Registros
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowDeleteModal(false)
-                    setDeleteCode('')
-                    setError('')
-                  }}
-                  className="text-gray-400 hover:text-gray-600 p-1"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                  </svg>
-                </button>
-              </div>
-
-              <div className="mb-4">
-                <p className="text-sm text-gray-700 mb-3">
-                  Esta acción eliminará <strong>TODOS</strong> los registros de la base de datos de forma permanente.
-                </p>
-                <p className="text-sm text-red-600 mb-4">
-                  ⚠️ Esta operación no se puede deshacer.
-                </p>
-
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ingresa el código de validación para continuar:
-                </label>
-                <input
-                  type="text"
-                  value={deleteCode}
-                  onChange={(e) => setDeleteCode(e.target.value)}
-                  placeholder="Código de validación"
-                  className="w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 text-base"
-                  maxLength="2"
-                />
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  onClick={() => {
-                    setShowDeleteModal(false)
-                    setDeleteCode('')
-                    setError('')
-                  }}
-                  className="flex-1 px-4 py-3 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-lg transition-colors"
-                  disabled={deleting}
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={deleteAllReportes}
-                  disabled={deleting || deleteCode !== '23'}
-                  className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded-lg transition-colors"
-                >
-                  {deleting ? 'Eliminando...' : 'Eliminar Todo'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de correo - Completamente rediseñado para móvil */}
-      {showEmailModal && currentEmailContent && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative min-h-full sm:min-h-0 sm:top-4 mx-auto border w-full sm:max-w-4xl shadow-lg sm:rounded-lg bg-white">
-            <div className="p-4 sm:p-6">
-              {/* Header del modal */}
-              <div className="flex justify-between items-center mb-4 pb-3 border-b">
-                <h3 className="text-lg sm:text-xl font-medium text-gray-900">
-                  📧 {currentEmailContent.supervisor}
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowEmailModal(false)
-                    setCurrentEmailContent(null)
-                  }}
-                  className="text-gray-400 hover:text-gray-600 p-2"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-                  </svg>
-                </button>
-              </div>
-
-              {/* Instrucciones */}
-              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <h4 className="font-semibold text-blue-900 mb-2 text-sm">📋 Instrucciones:</h4>
-                <ol className="text-xs text-blue-800 space-y-1">
-                  <li><strong>1.</strong> Toca &ldquo;Copiar Email Completo&rdquo;</li>
-                  <li><strong>2.</strong> Abre tu app de correo</li>
-                  <li><strong>3.</strong> Pega la información</li>
-                  <li><strong>4.</strong> Envía el correo</li>
-                </ol>
-              </div>
-
-              {/* Información del correo - Stack en móvil */}
-              <div className="space-y-3 mb-4">
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Para:</label>
-                  <div className="flex items-center space-x-2">
-                    <input 
-                      type="text" 
-                      value={currentEmailContent.email} 
-                      readOnly 
-                      className="flex-1 p-2 text-sm bg-white border rounded min-w-0"
-                    />
-                    <button
-                      onClick={() => {
-                        if (typeof window !== 'undefined' && navigator.clipboard) {
-                          navigator.clipboard.writeText(currentEmailContent.email)
-                          setMessage('✅ Email copiado')
-                        }
-                      }}
-                      className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-xs whitespace-nowrap"
-                    >
-                      Copiar
-                    </button>
-                  </div>
-                </div>
-
-                {currentEmailContent.cc.length > 0 && (
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">CC:</label>
-                    <div className="flex items-center space-x-2">
-                      <input 
-                        type="text" 
-                        value={currentEmailContent.cc.join(', ')} 
-                        readOnly 
-                        className="flex-1 p-2 text-sm bg-white border rounded min-w-0"
-                      />
+                  
+                  <div className="space-y-3">
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Asunto:</label>
+                      <div className="flex items-center space-x-2">
+                        <input 
+                          type="text" 
+                          value={currentEmailContent.subject} 
+                          readOnly 
+                          className="flex-1 p-2 text-sm bg-white border rounded"
+                        />
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(currentEmailContent.subject)
+                            setMessage('✅ Asunto copiado')
+                          }}
+                          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-xs"
+                        >
+                          Copiar
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Botón para intentar abrir correo nuevamente */}
+                    <div className="p-3 bg-green-50 rounded-lg">
                       <button
                         onClick={() => {
-                          if (typeof window !== 'undefined' && navigator.clipboard) {
-                            navigator.clipboard.writeText(currentEmailContent.cc.join(', '))
-                            setMessage('✅ CC copiado')
-                          }
+                          const mailtoLink = `mailto:${currentEmailContent.email}?subject=${encodeURIComponent(currentEmailContent.subject)}${currentEmailContent.cc.length > 0 ? `&cc=${encodeURIComponent(currentEmailContent.cc.join(','))}` : ''}&body=${encodeURIComponent(currentEmailContent.body)}`
+                          window.location.href = mailtoLink
                         }}
-                        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-xs whitespace-nowrap"
+                        className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-medium"
                       >
-                        Copiar
+                        🔄 Intentar Abrir Correo Automáticamente
                       </button>
                     </div>
                   </div>
-                )}
-
-                <div className="p-3 bg-gray-50 rounded-lg">
-                  <label className="block text-sm font-semibold text-gray-700 mb-1">Asunto:</label>
-                  <div className="flex items-center space-x-2">
-                    <input 
-                      type="text" 
-                      value={currentEmailContent.subject} 
-                      readOnly 
-                      className="flex-1 p-2 text-sm bg-white border rounded min-w-0"
-                    />
+                </div>
+                
+                {/* Contenido del mensaje */}
+                <div className="mb-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-sm font-semibold text-gray-700">Contenido del Mensaje:</label>
                     <button
                       onClick={() => {
-                        if (typeof window !== 'undefined' && navigator.clipboard) {
-                          navigator.clipboard.writeText(currentEmailContent.subject)
-                          setMessage('✅ Asunto copiado')
-                        }
+                        navigator.clipboard.writeText(currentEmailContent.body)
+                        setMessage('✅ Contenido del mensaje copiado al portapapeles')
                       }}
-                      className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded text-xs whitespace-nowrap"
+                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm font-medium"
                     >
-                      Copiar
+                      📋 Copiar Contenido
                     </button>
                   </div>
+                  
+                  <textarea
+                    value={currentEmailContent.body}
+                    readOnly
+                    className="w-full h-80 p-3 border border-gray-300 rounded-lg font-mono text-sm bg-gray-50 resize-none"
+                    placeholder="Contenido del correo..."
+                  />
                 </div>
-              </div>
-
-              {/* Contenido del mensaje */}
-              <div className="mb-4">
-                <div className="flex justify-between items-center mb-2">
-                  <label className="block text-sm font-semibold text-gray-700">Contenido:</label>
+                
+                {/* Botones de acción */}
+                <div className="flex justify-between items-center">
                   <button
                     onClick={() => {
-                      if (typeof window !== 'undefined' && navigator.clipboard) {
-                        navigator.clipboard.writeText(currentEmailContent.body)
-                        setMessage('✅ Contenido copiado')
-                      }
-                    }}
-                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded text-xs"
-                  >
-                    📋 Copiar
-                  </button>
-                </div>
-
-                <textarea
-                  value={currentEmailContent.body}
-                  readOnly
-                  className="w-full h-48 sm:h-64 p-3 border border-gray-300 rounded-lg font-mono text-xs bg-gray-50 resize-none"
-                />
-              </div>
-
-              {/* Botones de acción - Stack en móvil */}
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  onClick={() => {
-                    if (typeof window !== 'undefined' && navigator.clipboard) {
                       const fullEmailText = `Para: ${currentEmailContent.email}\n${currentEmailContent.cc.length > 0 ? `CC: ${currentEmailContent.cc.join(', ')}\n` : ''}Asunto: ${currentEmailContent.subject}\n\n${currentEmailContent.body}`
                       navigator.clipboard.writeText(fullEmailText)
-                      setMessage('✅ Email completo copiado')
-                    }
-                  }}
-                  className="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-medium text-center"
-                >
-                  📧 Copiar Email Completo
-                </button>
-
-                <button
-                  onClick={() => {
-                    setShowEmailModal(false)
-                    setCurrentEmailContent(null)
-                  }}
-                  className="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-medium"
-                >
-                  Cerrar
-                </button>
+                      setMessage('✅ Email completo copiado (destinatarios + asunto + contenido)')
+                    }}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded font-medium"
+                  >
+                    📧 Copiar Email Completo
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      setShowEmailModal(false)
+                      setCurrentEmailContent(null)
+                    }}
+                    className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded font-medium"
+                  >
+                    Cerrar
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

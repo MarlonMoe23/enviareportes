@@ -259,7 +259,7 @@ export default function Home() {
         body += `   Fecha: ${formatDate(reporte.fecha_reporte)}\n`
         body += `   Técnico: ${reporte.tecnico}\n`
         body += `   Planta: ${reporte.planta}\n`
-        body += `   OTo: ${reporte.equipo}\n`
+        body += `   OT: ${reporte.equipo}\n`
         body += `   Trabajo realizado: ${reporte.reporte}\n`
         body += `   Tiempo: ${reporte.tiempo || 0} horas\n`
         body += `   Estado: ${reporte.terminado ? 'TERMINADO' : 'PENDIENTE'}\n\n`

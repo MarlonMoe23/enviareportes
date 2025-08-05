@@ -218,12 +218,13 @@ export default function Home() {
     let body = `REPORTE DE MANTENIMIENTO\n`
     body += `Supervisor: ${supervisor.nombre}\n`
     body += `Fecha del reporte: ${fechaReporteFormateada}\n`
-    body += `Enviado: ${formatDateSpanish(new Date())}\n\n`
+    body += `\n`
 
     body += `RESUMEN:\n`
     body += `- Total de reportes: ${reportes.length}\n`
     body += `- Trabajos terminados: ${reportesTerminados}\n`
     body += `- Trabajos pendientes: ${reportesPendientes}\n`
+    body += `\n`
 
     if (Object.keys(horasPorTecnico).length > 0) {
       Object.entries(horasPorTecnico)
@@ -271,7 +272,11 @@ export default function Home() {
     return body
   }
 
-  const openOutlookEmail = async (nombreSupervisor, datos) => {
+
+
+
+
+ const openOutlookEmail = async (nombreSupervisor, datos) => {
     if (!isMounted) return
 
     // Usar fecha del día anterior para el asunto
@@ -280,18 +285,15 @@ export default function Home() {
 
     const subject = `Reporte de Mantenimiento - ${nombreSupervisor} - ${fechaReporteFormateada}`
 
-    const tecnicosQueNoReportaron = []
+    // CAMBIO: Ahora se copian TODOS los técnicos del supervisor, no solo los que no reportaron
+    const todosTecnicosEmails = []
     const emailsTecnicos = datos.supervisor.emailsTecnicos || {}
 
     if (datos.supervisor.mecanicos) {
-      const tecnicosQueReportaron = [...new Set(datos.reportes.map(r => r.tecnico))]
-
       datos.supervisor.mecanicos.forEach(tecnico => {
-        if (!tecnicosQueReportaron.includes(tecnico)) {
-          const emailTecnico = emailsTecnicos[tecnico]
-          if (emailTecnico) {
-            tecnicosQueNoReportaron.push(emailTecnico)
-          }
+        const emailTecnico = emailsTecnicos[tecnico]
+        if (emailTecnico) {
+          todosTecnicosEmails.push(emailTecnico)
         }
       })
     }
@@ -301,8 +303,9 @@ export default function Home() {
     // Construir el mailto link base (sin body para evitar límites de URL)
     let mailtoLink = `mailto:${datos.supervisor.email}?subject=${encodeURIComponent(subject)}`
 
-    if (tecnicosQueNoReportaron.length > 0) {
-      const ccEmails = tecnicosQueNoReportaron.join(',')
+    // CAMBIO: Agregar TODOS los técnicos en CC (antes solo los que no reportaron)
+    if (todosTecnicosEmails.length > 0) {
+      const ccEmails = todosTecnicosEmails.join(',')
       mailtoLink += `&cc=${encodeURIComponent(ccEmails)}`
     }
 
@@ -329,6 +332,13 @@ export default function Home() {
       setError('No se pudo abrir el cliente de correo. Verifica que tengas un cliente de correo configurado.')
     }
   }
+
+
+
+
+
+
+
 
   const getAllSupervisoresWithReportes = () => {
     // Usar solo reportes del día anterior para los emails

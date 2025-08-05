@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 
-// Data de supervisores integrada con emails de técnicos
+// Data de supervisores integrada con emails de técnicos - ACTUALIZADA
 const supervisorsData = {
   'Edisson Bejarano': {
     email: 'edisson.bejarano@celec.gob.ec',
@@ -10,17 +10,19 @@ const supervisorsData = {
       'Roberto Córdova',
       'Juan Carrión', 
       'Miguel Lozada',
-      'Cristian Lara',
+      'Alex Haro',        // ← MOVIDO desde Leonardo Ballesteros
       'Carlos Cisneros',
       'César Sánchez'
+      // 'Cristian Lara' - ELIMINADO (ya no está)
     ],
     emailsTecnicos: {
       'Roberto Córdova': 'roberto.cordova@celec.gob.ec',
       'Juan Carrión': 'juan.carrion@celec.gob.ec',
       'Miguel Lozada': 'miguel.lozada@celec.gob.ec',
-      'Cristian Lara': 'cristian.lara@celec.gob.ec',
+      'Alex Haro': 'alex.haro@celec.gob.ec',  // ← MOVIDO desde Leonardo Ballesteros
       'Carlos Cisneros': 'carlos.cisneros@celec.gob.ec',
       'César Sánchez': 'cesar.sanchez@celec.gob.ec'
+      // 'Cristian Lara': 'cristian.lara@celec.gob.ec' - ELIMINADO
     }
   },
   'Leonardo Ballesteros': {
@@ -28,7 +30,7 @@ const supervisorsData = {
     mecanicos: [
       'Dario Ojeda',
       'Edgar Ormaza',
-      'Alex Haro',
+      // 'Alex Haro', - MOVIDO a Edisson Bejarano
       'Angelo Porras',
       'José Urquizo',
       'Israel Pérez',
@@ -37,7 +39,7 @@ const supervisorsData = {
     emailsTecnicos: {
       'Dario Ojeda': 'dario.ojeda@celec.gob.ec',
       'Edgar Ormaza': 'edgar.ormaza@celec.gob.ec',
-      'Alex Haro': 'alex.haro@celec.gob.ec',
+      // 'Alex Haro': 'alex.haro@celec.gob.ec', - MOVIDO a Edisson Bejarano
       'Angelo Porras': 'angelo.porras@celec.gob.ec',
       'José Urquizo': 'jose.urquizo@celec.gob.ec',
       'Israel Pérez': 'jefferson.perez@celec.gob.ec',
